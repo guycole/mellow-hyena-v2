@@ -14,8 +14,6 @@ import time
 import uuid
 import zoneinfo
 
-from parser import Parser
-
 import yaml
 from yaml.loader import SafeLoader
 
@@ -32,22 +30,38 @@ class Collector:
         self.longitude = args["longitude"]
         self.site = args["site"]
 
+    def dump1090(self) -> list[dict[str, any]]:
+        raw = []
+
+        try:
+            response = requests.get(self.dump1090url, timeout=5.0)
+            if response.status_code == 200:
+                raw = json.loads(response.text)
+        except Exception as error:
+            print(f"dump1090 error: {error}")
+
+        results = []
+        for element in raw:
+            temp = {
+                "hex": element.get("hex", "unknown"),
+                "flight": element.get("flight", "unknown"),
+                "latitude": element.get("lat", 0.0),
+                "longitude": element.get("lon", 0.0),
+                "altitude": element.get("altitude", 0),
+                "track": element.get("track", 0),
+                "speed": element.get("speed", 0)
+            }
+
+            results.append(temp)
+
+        return results
+    
     def json_file_writer(self, file_name: str, json_data: dict[str, any]) -> None:
         try:
             with open(file_name, "w") as out_file:
                 json.dump(json_data, out_file, indent=4)
         except Exception as error:
             print(error)
-
-    def dump1090(self):
-        print("reader")
-        
-        try:
-            response = requests.get(self.dump1090url, timeout=5.0)
-            if response.status_code == 200:
-                payload = json.loads(response.text)
-        except Exception as error:
-            print(f"dump1090 error: {error}")
 
     def execute(self) -> None:
         print(f"collector execute")
@@ -56,13 +70,8 @@ class Collector:
         print(f"base filename: {base_file_name}")
 
         outfile_json = f"{self.fresh_dir}/{base_file_name}.json"
-        outfile_raw = f"{self.fresh_dir}/{base_file_name}.raw"
 
-        xxx = self.dump1090()
-
-#        parser = Parser()
-#        observations = parser.execute(file_name)
-        observations = []
+        observations = self.dump1090()
 
         epoch_seconds = int(time.time())
         dt_object_utc = datetime.datetime.fromtimestamp(
@@ -79,9 +88,9 @@ class Collector:
             "epochSeconds": epoch_seconds, 
             "fileName": f"{base_file_name}.json",
             "iso8601": dt_object_utc.isoformat(),
-            "mode": "iwlist",
+            "mode": "dump1090",
             "platform": socket.gethostname(),
-            "project": "heeler-v2",
+            "project": "hyena-v2",
             "version": 1,
             "observations": observations
         }
