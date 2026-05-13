@@ -43,13 +43,13 @@ class Collector:
         results = []
         for element in raw:
             temp = {
-                "hex": element.get("hex", "unknown"),
-                "flight": element.get("flight", "unknown"),
-                "latitude": element.get("lat", 0.0),
-                "longitude": element.get("lon", 0.0),
-                "altitude": element.get("altitude", 0),
-                "track": element.get("track", 0),
-                "speed": element.get("speed", 0)
+                "hex": element.get("hex", "unknown").strip(),
+                "flight": element.get("flight", "unknown").strip(),
+                "latitude": str(element.get("lat", 0.0)).strip(),
+                "longitude": str(element.get("lon", 0.0)).strip(),
+                "altitude": str(element.get("altitude", 0)).strip(),
+                "track": str(element.get("track", 0)).strip(),
+                "speed": str(element.get("speed", 0)).strip()
             }
 
             results.append(temp)
