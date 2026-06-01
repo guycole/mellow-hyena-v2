@@ -96,7 +96,7 @@ class BootBoy:
 
     def execute(self, target: str) -> None:
         self.configuration(target)
-        #self.crontab()
+        self.crontab()
 
 #
 # 
