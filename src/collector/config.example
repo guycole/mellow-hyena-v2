@@ -1,0 +1,16 @@
+#
+# dump1090 URL
+dump1090url: http://localhost:8080/data.json
+#
+# repository of freshly collected observations
+freshDir: /var/wombat/fresh/hyena
+#
+# collection host location
+altitude: 321
+latitude: 12.34
+longitude: 123.45
+#site: anderson1
+site: development
+#site: mobile1
+#site: vallejo1
+#
