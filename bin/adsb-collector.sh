@@ -13,6 +13,7 @@ PATH=/bin:/usr/bin:/etc:/usr/local/bin; export PATH
 WORK_DIR="/home/wombat/Documents/github/mellow-hyena-v2/src/collector"
 # 
 echo "start collection"
+sleep 13
 cd $WORK_DIR
 source venv/bin/activate
 python3 ./collector.py
