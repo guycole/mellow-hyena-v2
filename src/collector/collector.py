@@ -23,12 +23,20 @@ class Collector:
     def __init__(self, args: dict[str, any]):
         self.dump1090url = args["dump1090url"]
 
-        self.fresh_dir = args["freshDir"]
+        self.crate_name = args["crateName"]
+        self.fresh_dir = configuration["freshDir"]
 
-        self.altitude = args["altitude"]
-        self.latitude = args["latitude"]
-        self.longitude = args["longitude"]
-        self.site = args["site"]
+        self.host_name = configuration['equipment']["hostName"]
+        self.host_type = configuration['equipment']["type"]
+
+        self.altitude = configuration["geoLoc"]["altitude"]
+        self.latitude = configuration["geoLoc"]["latitude"]
+        self.longitude = configuration["geoLoc"]["longitude"]
+        self.site_name = configuration["geoLoc"]["siteName"]
+
+        self.antenna = configuration["receiver"]["antenna"]
+        self.receiver_id = configuration["receiver"]["receiver_id"]
+        self.receiver_type = configuration["receiver"]["type"]
 
     def dump1090(self) -> list[dict[str, any]]:
         raw = []
@@ -79,18 +87,27 @@ class Collector:
         )
 
         results = {
+            "equipment": {
+                "antenna": self.antenna,  
+                "receiver_id": self.receiver_id,
+                "receiver_type": self.receiver_type,
+                "platform": self.host_type,
+                "hostName": self.host_name  
+            },
             "geoLoc": {
                 "altitude": self.altitude,
                 "latitude": self.latitude,
                 "longitude": self.longitude,
-                "site": self.site
+                "siteName": self.site_name
             },
-            "epochSeconds": epoch_seconds, 
+            "timeStamp": {
+                "epochSeconds": epoch_seconds,
+                "iso8601": dt_object_utc.isoformat()
+            },
+            "crate": self.crate_name,
             "fileName": f"{base_file_name}.json",
-            "iso8601": dt_object_utc.isoformat(),
             "mode": "dump1090",
-            "platform": socket.gethostname(),
-            "project": "hyena-v2",
+            "project": "hyena-adsb-v2",
             "version": 1,
             "observations": observations
         }
