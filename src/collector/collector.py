@@ -18,7 +18,7 @@ import zoneinfo
 import yaml
 from yaml.loader import SafeLoader
 
-from AdsbExchange import AdsbExchange
+from adsb_exchange import AdsbExchange
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("hyena-adsb")

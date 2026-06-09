@@ -37,12 +37,16 @@ class AdsbExchange:
     def parse_aircraft(self, args: dict[str, str]) -> dict[str, str]:
         """parse ADSB exchange API response"""
 
+        if len(args) < 1:
+            logger.info("skipping empty args")
+            return {}
+
         if args["msg"] != "No error":
-            logger.error(f"error: {args['msg']}")
+            logger.error(f"{args['msg']}")
             return {}
 
         if len(args["ac"]) < 1:
-            logger.info("error: empty aircraft list")
+            logger.info("skipping empty aircraft list")
             return {}
 
         unwrapped = args["ac"]
