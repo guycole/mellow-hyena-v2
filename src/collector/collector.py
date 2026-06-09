@@ -7,6 +7,7 @@
 
 import datetime
 import json
+import logging
 import requests
 import socket
 import sys
@@ -16,6 +17,11 @@ import zoneinfo
 
 import yaml
 from yaml.loader import SafeLoader
+
+from AdsbExchange import AdsbExchange
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger("hyena-adsb")
 
 class Collector:
     """make the iwlist observation file"""
@@ -81,6 +87,11 @@ class Collector:
 
         observations = self.dump1090()
 
+        candidates = [observation["hex"] for observation in observations]
+
+        adsb_exchange = AdsbExchange("bogus")
+        adsbex = adsb_exchange.execute(candidates)
+
         epoch_seconds = int(time.time())
         dt_object_utc = datetime.datetime.fromtimestamp(
             epoch_seconds, tz=zoneinfo.ZoneInfo("UTC")
@@ -109,6 +120,7 @@ class Collector:
             "mode": "dump1090",
             "project": "hyena-adsb-v2",
             "version": 1,
+            "adsbex": adsbex,
             "observations": observations
         }
 
