@@ -87,7 +87,7 @@ class Collector:
 
         observations = self.dump1090()
 
-        candidates = []
+        candidates = [observation["hex"] for observation in observations]
 
         adsb_exchange = AdsbExchange("bogus")
         adsbex = adsb_exchange.execute(candidates)
