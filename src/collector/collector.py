@@ -83,19 +83,19 @@ class Collector:
         base_file_name = str(uuid.uuid4())
         print(f"base filename: {base_file_name}")
 
-        outfile_json = f"{self.fresh_dir}/{base_file_name}.json"
-
-        observations = self.dump1090()
-
-        candidates = [observation["hex"] for observation in observations]
-
-        adsb_exchange = AdsbExchange("bogus")
-        adsbex = adsb_exchange.execute(candidates)
-
         epoch_seconds = int(time.time())
         dt_object_utc = datetime.datetime.fromtimestamp(
             epoch_seconds, tz=zoneinfo.ZoneInfo("UTC")
         )
+
+        outfile_json = f"{self.fresh_dir}/{base_file_name}.json"
+
+        observations = self.dump1090()
+        candidates = [observation["hex"] for observation in observations]
+        print(candidates)
+
+        adsb_exchange = AdsbExchange("bogus")
+        adsbex = adsb_exchange.execute(candidates)
 
         results = {
             "equipment": {
