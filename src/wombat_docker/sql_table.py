@@ -15,10 +15,8 @@ from sqlalchemy.ext.declarative import declared_attr
 
 mapper_registry = registry()
 
-
 class Base(DeclarativeBase):
     pass
-
 
 class DailyScore(Base):
     __tablename__ = "heeler_daily_score"

@@ -91,17 +91,17 @@ class Validator:
             self.file_failure(file_name)
             return
 
-        if self.raw_buffer["version"] == 1 and self.raw_buffer["project"] == "hyena-adsb-v2":
+        if self.raw_buffer["version"] == 1 and self.raw_buffer["project"].startswith("hyena"):
             pass
         else:
             logger.warning(f"invalid version or project for {file_name}")
             self.file_failure(file_name)
             return
         
-#        if self.load_log_test(file_name):
-#            self.file_success(file_name)
-#        else:
-#            self.file_failure(file_name)
+        if self.load_log_test(file_name):
+            self.file_success(file_name)
+        else:
+            self.file_failure(file_name)
 
     def execute(self) -> None:
         logger.info("validator")

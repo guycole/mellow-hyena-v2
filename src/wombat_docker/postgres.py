@@ -24,7 +24,6 @@ from sql_table import (
     LoadLog,
 )
 
-
 class PostGres:
     db_engine = None
     Session = None
