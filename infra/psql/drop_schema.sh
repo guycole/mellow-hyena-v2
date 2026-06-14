@@ -10,5 +10,5 @@ export PGHOST=localhost
 export PGPASSWORD=woofwoof
 export PGUSER=hyena_admin
 #
-psql $PGDATABASE -c "drop table hyena_v1.load_log"
+psql $PGDATABASE -c "drop table hyena_load_log"
 #

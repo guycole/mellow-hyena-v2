@@ -2,24 +2,16 @@
 -- Title: load_log.psql
 -- Description: file load history
 --
-create table hyena_v1.load_log (
+create table hyena_load_log (
   id            bigserial    primary key,
   file_name     varchar(48)  unique not null,
-  file_type     varchar(16)  not null,
-  obs_date      date         not null default CURRENT_DATE,
-  obs_quantity  smallint     not null,
   obs_time      timestamp    not null default CURRENT_TIMESTAMP,
-  platform      varchar(16)  not null,
-  project       varchar(16)  not null,
-  site_id       bigint       not null,
-  constraint    site_id foreign key(site_id) references hyena_v1.site(id)
-) tablespace hyena;
+  project       varchar(16)  not null
+);
 
-insert into hyena_v1.load_log(file_name, file_type, obs_quantity, platform, project, site_id) values('pytest', 'pytest', 0, 'pytest', 'pytest', 1);
+grant select, insert, update, delete on hyena_load_log to hyena_client;
+grant usage, select on sequence hyena_load_log_id_seq to hyena_client;
 
-grant select, insert, update, delete on hyena_v1.load_log to hyena_client;
-grant usage, select on sequence hyena_v1.load_log_id_seq to hyena_client;
+create index load_log_obs_date on hyena_load_log(obs_time);
 
-create index load_log_obs_date on hyena_v1.load_log(obs_date);
-
-create unique index load_log_time_platform_project_site on hyena_v1.load_log(obs_time, platform, project, site_id);
+create unique index load_log_time_platform_project_site on hyena_load_log(obs_time, project);

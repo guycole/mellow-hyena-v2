@@ -25,10 +25,10 @@ class HeelerApp:
         self.stunt_box = stunt_box
 
         # wombat docker
-        self.db_conn = "postgresql+psycopg2://heeler_client:batabat@172.17.0.1:5432/heeler"
+        self.db_conn = "postgresql+psycopg2://hyena_client:batabat@172.17.0.1:5432/hyena"
 
         # mac development
-        # self.db_conn = "postgresql+psycopg2://heeler_client:batabat@localhost:5432/heeler"
+        # self.db_conn = "postgresql+psycopg2://hyena_client:batabat@localhost:5432/hyena"
 
         db_engine = create_engine(self.db_conn, echo=False)
         self.postgres = PostGres(sessionmaker(bind=db_engine, expire_on_commit=False))

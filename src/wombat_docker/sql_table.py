@@ -40,30 +40,20 @@ class DailyScore(Base):
 class LoadLog(Base):
     """load_log table definition"""
 
-    __tablename__ = "heeler_load_log"
+    __tablename__ = "hyena_load_log"
 
     id = Column(Integer, primary_key=True)
-    epoch_seconds = Column(BigInteger)
     file_name = Column(String)
-    file_time = Column(DateTime)
-    load_time = Column(DateTime)
-    mode = Column(String)
-    obs_quantity = Column(Integer)
-    platform = Column(String)
+    obs_time = Column(DateTime)
     project = Column(String)
 
     def __init__(self, args: dict[str, any]):
-        self.epoch_seconds = args["epoch_seconds"]
         self.file_name = args["file_name"]
-        self.file_time = args["file_time"]
-        self.load_time = args.get("load_time", datetime.now())
-        self.mode = args["mode"]
-        self.obs_quantity = args["obs_quantity"]
-        self.platform = args["platform"]
+        self.obs_time = args["file_time"]
         self.project = args["project"]
 
     def __repr__(self):
-        return f"load_log({self.file_name} {self.file_time} {self.platform})"
+        return f"load_log({self.file_name} {self.obs_time} {self.project})"
 
 
 # ;;; Local Variables: ***

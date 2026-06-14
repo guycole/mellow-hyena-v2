@@ -42,7 +42,7 @@ COPY requirements.txt ./
 RUN $VIRTUAL_ENV/bin/pip install --no-cache-dir -r requirements.txt
 
 COPY koala.py ./
-COPY heeler_app.py ./
+COPY hyena_app.py ./
 COPY postgres.py ./
 COPY scorer.py ./
 COPY sql_table.py ./
@@ -53,4 +53,4 @@ RUN printf '%s\n' '#!/bin/sh' 'set -e' '/usr/local/bin/collect-wombat-ids.sh' 's
 
 RUN mkdir -p /mnt/wombat
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["python", "heeler_app.py"]
+CMD ["python", "hyena_app.py"]

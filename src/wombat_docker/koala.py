@@ -53,6 +53,8 @@ class Koala:
             return
         
         epochSeconds = self.raw_buffer.get("timeStamp", {}).get("epochSeconds", 0)
+        project = self.raw_buffer.get("project", "unknown"),
+        project = "hyena-adsb"
         
         result = {
             "epochSeconds": epochSeconds,
@@ -60,12 +62,13 @@ class Koala:
                 "site": self.raw_buffer.get("geoLoc", {}).get("siteName", "unknown")
             },
             "hostName": self.raw_buffer.get("equipment", {}).get("hostName", "unknown"),
-            "project": self.raw_buffer.get("project", "unknown"),
+            "project": project,
             "version": self.raw_buffer.get("version", 0),
-            "wifi": self.raw_buffer.get("observations", []),
+            "observation": self.raw_buffer.get("observations", []),
+            "adsbex": self.raw_buffer.get("adsbex", []),
         }
 
-        out_file_name = f"{self.koala_dir}/{epochSeconds}.koala"
+        out_file_name = f"{self.koala_dir}/{epochSeconds}.adsb"
         self.file_writer(out_file_name, result)
         os.chown(out_file_name, self.wombat_uid, self.wombat_gid)
 
@@ -73,13 +76,13 @@ class Koala:
         logger.info("koala execute")
         logger.info(f"success dir:{self.success_dir}")
 
-#        os.chdir(self.success_dir)
-#        targets = [ff for ff in os.listdir(".") if ff.endswith(".json")]
-#        logger.info(f"{len(targets)} files noted")
+        os.chdir(self.success_dir)
+        targets = os.listdir(".")
+        logger.info(f"{len(targets)} files noted")
 
-#        for target in targets:
-##            logger.info(f"target:{target}")
-#            self.file_processor(target)
+        for target in targets:
+            logger.info(f"target:{target}")
+            self.file_processor(target)
 
 if __name__ == "__main__":
     koala = Koala()
