@@ -6,7 +6,7 @@ After=multi-user.target
 
 [Service]
 User=root
-ExecStart=/home/gsc/Documents/github/mellow-hyena/bin/dump978.sh
+ExecStart=/home/wombat/Documents/github/mellow-hyena-v2/bin/dump978.sh
 StandardOutput=null
 Restart=always
 

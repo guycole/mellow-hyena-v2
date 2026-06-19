@@ -8,7 +8,7 @@
 PATH=/bin:/usr/bin:/etc:/usr/local/bin; export PATH
 #LD_LIBRARY_PATH=/usr/local/lib/arm-linux-gnueabihf; export LD_LIBRARY_PATH
 #
-cd /home/gsc/Documents/github/dump978
+cd /home/wombat/Documents/github/dump978
 #
 /usr/local/bin/rtl_sdr -f 978000000 -s 2083334 - | ./dump978 | ./uat2json /tmp
 #
