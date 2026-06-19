@@ -47,7 +47,7 @@ class Koala:
 
         return True
 
-    def file_processor(self, file_name: str) -> None:
+    def file_processor(self, file_name: str) -> dict[str, any]:
         if not self.file_reader(file_name):
             logger.warning(f"file read failed for {file_name}")
             return
@@ -68,9 +68,7 @@ class Koala:
             "adsbex": self.raw_buffer.get("adsbex", []),
         }
 
-        out_file_name = f"{self.koala_dir}/{epochSeconds}.adsb"
-        self.file_writer(out_file_name, result)
-        os.chown(out_file_name, self.wombat_uid, self.wombat_gid)
+        return result
 
     def execute(self) -> None:
         logger.info("koala execute")
@@ -80,9 +78,24 @@ class Koala:
         targets = os.listdir(".")
         logger.info(f"{len(targets)} files noted")
 
+        # koala only gets the most recent
+        candidates = {}
         for target in targets:
-            logger.info(f"target:{target}")
-            self.file_processor(target)
+            candidate = self.file_processor(target) 
+            if len(candidate) > 0:
+                key = f"{candidate['epochSeconds']}.{candidate['hostName']}"
+                candidates[key] = candidate
+
+        winner = None
+        for key in sorted(candidates):
+            winner = candidates[key]
+
+        if winner is None:
+            print("no winner")
+        else:
+            out_file_name = f"{self.koala_dir}/{winner['epochSeconds']}.{winner['hostName']}"
+            self.file_writer(out_file_name, winner)
+            os.chown(out_file_name, self.wombat_uid, self.wombat_gid)
 
 if __name__ == "__main__":
     koala = Koala()
