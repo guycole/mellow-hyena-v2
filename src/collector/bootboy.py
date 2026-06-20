@@ -18,7 +18,7 @@ from yaml.loader import SafeLoader
 
 class BootBoy:
 
-    def configuration(self, target: str) -> str:
+    def configuration(self, target: str) -> dict[str, str]:
         print(f"BootBoy: configuring {target}")
 
         # Build the path to the admin JSON file
@@ -65,7 +65,10 @@ class BootBoy:
             print(f"Error writing config.yaml: {e}")
             sys.exit(1)
 
-        return receiver.get("task", "xxx")
+        return {
+            "receiver_task": receiver.get("task", "xxx"),
+            "host_type": host_type,
+        }
 
     def manage_systemd_service(self, service_name: str, receiver_task: str, task_name: str) -> None:
         import subprocess
@@ -96,10 +99,43 @@ class BootBoy:
                 print(f"Failed to {action} {service_name}: {stderr}")
                 return
 
-    def manage_dump1090(self, receiver_task: str) -> None:
+    def start_systemd_service(self, service_name: str) -> None:
+        import subprocess
+
+        if platform.system() != "Linux":
+            print(f"{service_name} management skipped on non-Linux host.")
+            return
+
+        for action in ("enable", "start"):
+            try:
+                proc = subprocess.run(
+                    ["systemctl", action, service_name],
+                    capture_output=True,
+                    text=True,
+                )
+            except Exception as e:
+                print(f"Error managing {service_name}: {e}")
+                return
+
+            if proc.returncode == 0:
+                print(f"{service_name} {action}d successfully.")
+            else:
+                stderr = proc.stderr.strip()
+                print(f"Failed to {action} {service_name}: {stderr}")
+                return
+
+    def manage_dump1090(self, receiver_task: str, host_type: str) -> None:
+        if "adsb" in receiver_task.lower():
+            self.start_systemd_service("dump1090.service")
+            return
+
         self.manage_systemd_service("dump1090.service", receiver_task, "adsb")
 
     def manage_dump978(self, receiver_task: str) -> None:
+        if "uat" in receiver_task.lower():
+            self.start_systemd_service("dump978.service")
+            return
+
         self.manage_systemd_service("dump978.service", receiver_task, "uat")
 
     def crontab(self) -> None:
@@ -136,10 +172,10 @@ class BootBoy:
             print(f"Error updating wombat's crontab: {e}")
 
     def execute(self, target: str) -> None:
-        task = self.configuration(target)
+        config = self.configuration(target)
         self.crontab()
-        self.manage_dump1090(task)
-        self.manage_dump978(task)
+        self.manage_dump1090(config["receiver_task"], config["host_type"])
+        self.manage_dump978(config["receiver_task"])
 
 #
 # 
