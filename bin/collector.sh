@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Title: adsb-collector.sh
-# Description: dump1090 collection
+# Title: collector.sh
+# Description: hyena collection
 # Development Environment: Debian 10 (buster)/raspian
 # Author: Guy Cole (guycole at gmail dot com)
 #
@@ -16,6 +16,6 @@ echo "start collection"
 sleep 13
 cd $WORK_DIR
 source venv/bin/activate
-python3 ./collector.py adsb
+python3 ./collector.py
 echo "end collection"
 #
