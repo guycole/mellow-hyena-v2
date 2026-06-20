@@ -6,6 +6,7 @@
 #
 import datetime
 import json
+import os
 import platform
 import socket
 import sys
@@ -17,6 +18,24 @@ import yaml
 from yaml.loader import SafeLoader
 
 class BootBoy:
+
+    def can_manage_systemd(self, service_name: str) -> bool:
+        if platform.system() != "Linux":
+            print(f"{service_name} management skipped on non-Linux host.")
+            return False
+
+        if os.geteuid() != 0:
+            print(f"{service_name} management skipped: must run as root (systemd boot path).")
+            return False
+
+        return True
+
+    def run_systemctl(self, action: str, service_name: str) -> tuple[int, str]:
+        import subprocess
+        cmd = ["systemctl", action, service_name]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        stderr = proc.stderr.strip()
+        return proc.returncode, stderr
 
     def configuration(self, target: str) -> dict[str, str]:
         print(f"BootBoy: configuring {target}")
@@ -71,10 +90,7 @@ class BootBoy:
         }
 
     def manage_systemd_service(self, service_name: str, receiver_task: str, task_name: str) -> None:
-        import subprocess
-
-        if platform.system() != "Linux":
-            print(f"{service_name} management skipped on non-Linux host.")
+        if not self.can_manage_systemd(service_name):
             return
 
         if task_name not in receiver_task.lower():
@@ -83,44 +99,31 @@ class BootBoy:
 
         for action in ("enable", "start"):
             try:
-                proc = subprocess.run(
-                    ["systemctl", action, service_name],
-                    capture_output=True,
-                    text=True,
-                )
+                returncode, stderr = self.run_systemctl(action, service_name)
             except Exception as e:
                 print(f"Error managing {service_name}: {e}")
                 return
 
-            if proc.returncode == 0:
+            if returncode == 0:
                 print(f"{service_name} {action}d successfully.")
             else:
-                stderr = proc.stderr.strip()
                 print(f"Failed to {action} {service_name}: {stderr}")
                 return
 
     def start_systemd_service(self, service_name: str) -> None:
-        import subprocess
-
-        if platform.system() != "Linux":
-            print(f"{service_name} management skipped on non-Linux host.")
+        if not self.can_manage_systemd(service_name):
             return
 
         for action in ("enable", "start"):
             try:
-                proc = subprocess.run(
-                    ["systemctl", action, service_name],
-                    capture_output=True,
-                    text=True,
-                )
+                returncode, stderr = self.run_systemctl(action, service_name)
             except Exception as e:
                 print(f"Error managing {service_name}: {e}")
                 return
 
-            if proc.returncode == 0:
+            if returncode == 0:
                 print(f"{service_name} {action}d successfully.")
             else:
-                stderr = proc.stderr.strip()
                 print(f"Failed to {action} {service_name}: {stderr}")
                 return
 
