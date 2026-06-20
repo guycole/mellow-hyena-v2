@@ -86,7 +86,6 @@ class BootBoy:
 
         return {
             "receiver_task": receiver.get("task", "xxx"),
-            "host_type": host_type,
         }
 
     def manage_systemd_service(self, service_name: str, receiver_task: str, task_name: str) -> None:
@@ -127,19 +126,19 @@ class BootBoy:
                 print(f"Failed to {action} {service_name}: {stderr}")
                 return
 
-    def manage_dump1090(self, receiver_task: str, host_type: str) -> None:
+    def manage_dump1090(self, receiver_task: str) -> None:
         if "adsb" in receiver_task.lower():
             self.start_systemd_service("dump1090.service")
             return
 
-        self.manage_systemd_service("dump1090.service", receiver_task, "adsb")
+        print("dump1090.service not managed for non-ADSB receiver task.")
 
     def manage_dump978(self, receiver_task: str) -> None:
         if "uat" in receiver_task.lower():
             self.start_systemd_service("dump978.service")
             return
 
-        self.manage_systemd_service("dump978.service", receiver_task, "uat")
+        print("dump978.service not managed for non-UAT receiver task.")
 
     def crontab(self) -> None:
         import subprocess
@@ -177,7 +176,7 @@ class BootBoy:
     def execute(self, target: str) -> None:
         config = self.configuration(target)
         self.crontab()
-        self.manage_dump1090(config["receiver_task"], config["host_type"])
+        self.manage_dump1090(config["receiver_task"])
         self.manage_dump978(config["receiver_task"])
 
 #
