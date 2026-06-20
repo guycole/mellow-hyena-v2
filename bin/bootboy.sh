@@ -11,14 +11,6 @@ WORK_DIR="/home/wombat/Documents/github/mellow-hyena-v2/src/collector"
 #
 echo "start bootboy"
 
-if ! command -v systemctl >/dev/null 2>&1; then
-	echo "systemctl not found" >&2
-	exit 1
-fi
-
-# Let systemd own dump1090 startup by enabling the unit, but do not start it here.
-systemctl enable dump1090.service
-
 cd $WORK_DIR
 source venv/bin/activate
 python3 ./bootboy.py

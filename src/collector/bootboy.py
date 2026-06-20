@@ -6,6 +6,7 @@
 #
 import datetime
 import json
+import platform
 import socket
 import sys
 import time
@@ -17,7 +18,7 @@ from yaml.loader import SafeLoader
 
 class BootBoy:
 
-    def configuration(self, target: str) -> None:
+    def configuration(self, target: str) -> str:
         print(f"BootBoy: configuring {target}")
 
         # Build the path to the admin JSON file
@@ -64,6 +65,43 @@ class BootBoy:
             print(f"Error writing config.yaml: {e}")
             sys.exit(1)
 
+        return receiver.get("task", "xxx")
+
+    def manage_systemd_service(self, service_name: str, receiver_task: str, task_name: str) -> None:
+        import subprocess
+
+        if platform.system() != "Linux":
+            print(f"{service_name} management skipped on non-Linux host.")
+            return
+
+        if task_name not in receiver_task.lower():
+            print(f"{service_name} not managed for non-{task_name.upper()} receiver task.")
+            return
+
+        for action in ("enable", "start"):
+            try:
+                proc = subprocess.run(
+                    ["systemctl", action, service_name],
+                    capture_output=True,
+                    text=True,
+                )
+            except Exception as e:
+                print(f"Error managing {service_name}: {e}")
+                return
+
+            if proc.returncode == 0:
+                print(f"{service_name} {action}d successfully.")
+            else:
+                stderr = proc.stderr.strip()
+                print(f"Failed to {action} {service_name}: {stderr}")
+                return
+
+    def manage_dump1090(self, receiver_task: str) -> None:
+        self.manage_systemd_service("dump1090.service", receiver_task, "adsb")
+
+    def manage_dump978(self, receiver_task: str) -> None:
+        self.manage_systemd_service("dump978.service", receiver_task, "uat")
+
     def crontab(self) -> None:
         import subprocess
         crontab_entry = "* * * * * /home/wombat/Documents/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
@@ -100,6 +138,8 @@ class BootBoy:
     def execute(self, target: str) -> None:
         task = self.configuration(target)
         self.crontab()
+        self.manage_dump1090(task)
+        self.manage_dump978(task)
 
 #
 # 
