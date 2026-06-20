@@ -69,28 +69,29 @@ class BootBoy:
         crontab_entry = "* * * * * /home/wombat/Documents/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
 
         try:
-            # Always operate on the 'wombat' user's crontab
+            # The wombat user is dedicated to this workload.
+            # Enforce exactly one current cron entry to remove stale lines.
             result = subprocess.run(["crontab", "-u", "wombat", "-l"], capture_output=True, text=True)
             if result.returncode == 0:
-                current_crontab = result.stdout.splitlines()
+                current_crontab = [line.strip() for line in result.stdout.splitlines() if line.strip()]
             else:
                 current_crontab = []
         except Exception as e:
             print(f"Error reading wombat's crontab: {e}")
             return
 
-        # Check if entry already exists
-        if any(crontab_entry in line for line in current_crontab):
+        desired_crontab = [crontab_entry]
+
+        # Skip write if already exactly correct.
+        if current_crontab == desired_crontab:
             print("Crontab entry already exists for wombat.")
             return
 
-        # Add the new entry
-        current_crontab.append(crontab_entry)
-        new_crontab = "\n".join(current_crontab) + "\n"
+        new_crontab = "\n".join(desired_crontab) + "\n"
         try:
             proc = subprocess.run(["crontab", "-u", "wombat", "-"], input=new_crontab, text=True)
             if proc.returncode == 0:
-                print("Crontab updated successfully for wombat.")
+                print("Crontab replaced successfully for wombat.")
             else:
                 print("Failed to update wombat's crontab.")
         except Exception as e:

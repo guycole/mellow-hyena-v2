@@ -24,10 +24,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger("hyena-adsb")
 
 class Collector:
-    """make the iwlist observation file"""
+    """make the observation file"""
 
     def __init__(self, args: dict[str, any]):
         self.dump1090url = args["dump1090url"]
+        self.dump978filename = args["dump978filename"]
 
         self.crate_name = args["crateName"]
         self.fresh_dir = configuration["freshDir"]
@@ -42,6 +43,7 @@ class Collector:
 
         self.antenna = configuration["receiver"]["antenna"]
         self.receiver_id = configuration["receiver"]["receiver_id"]
+        self.receiver_task = configuration["receiver"]["task"]
         self.receiver_type = configuration["receiver"]["type"]
 
     def dump1090(self) -> list[dict[str, any]]:
@@ -83,7 +85,7 @@ class Collector:
         raw = []
         return []
 
-    def execute(self, stunt) -> None:
+    def execute2(self, stunt) -> None:
         print(f"collector execute:{stunt}")
 
         base_file_name = str(uuid.uuid4())
@@ -139,22 +141,28 @@ class Collector:
 
         self.json_file_writer(outfile_json, results)
 
+    def execute(self) -> None:
+        print(f"collector execute")
+
+        if "uat" in self.receiver_task:
+            print("UAT receiver task detected.")
+        else:
+            print("adsb")
+
 #
 # argv[1] = configuration filename
 #
 if __name__ == "__main__":
-    if len(sys.argv) > 2:
-        file_name = sys.argv[2]
+    if len(sys.argv) > 1:
+        file_name = sys.argv[1]
     else:
         file_name = "config.yaml"
-
-    stunt = sys.argv[1]
 
     with open(file_name, "r") as in_file:
         try:
             configuration = yaml.load(in_file, Loader=SafeLoader)
             collector = Collector(configuration)
-            collector.execute(stunt)
+            collector.execute()
         except yaml.YAMLError as error:
             print(error)
 
