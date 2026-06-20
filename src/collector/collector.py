@@ -77,8 +77,14 @@ class Collector:
         except Exception as error:
             print(error)
 
-    def execute(self) -> None:
-        print(f"collector execute")
+    def dump978(self) -> list[dict[str, any]]:
+        dump978out = "/tmp/aircraft.json"
+
+        raw = []
+        return []
+
+    def execute(self, stunt) -> None:
+        print(f"collector execute:{stunt}")
 
         base_file_name = str(uuid.uuid4())
         print(f"base filename: {base_file_name}")
@@ -89,6 +95,13 @@ class Collector:
         )
 
         outfile_json = f"{self.fresh_dir}/{base_file_name}.json"
+
+        if stunt == "adsb":
+            observations = self.dump1090()
+        elif stunt == "uat":
+            observations = self.dump978()
+        else:
+            print(f"unkown stunt")
 
         observations = self.dump1090()
         candidates = [observation["hex"] for observation in observations]
@@ -130,16 +143,18 @@ class Collector:
 # argv[1] = configuration filename
 #
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        file_name = sys.argv[1]
+    if len(sys.argv) > 2:
+        file_name = sys.argv[2]
     else:
         file_name = "config.yaml"
+
+    stunt = sys.argv[1]
 
     with open(file_name, "r") as in_file:
         try:
             configuration = yaml.load(in_file, Loader=SafeLoader)
             collector = Collector(configuration)
-            collector.execute()
+            collector.execute(stunt)
         except yaml.YAMLError as error:
             print(error)
 

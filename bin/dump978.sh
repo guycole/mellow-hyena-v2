@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Title: dump978.sh
-# Description: dump978 listener
+# Description: dump978 collection
 # Development Environment: Debian 10 (buster)/raspian
 # Author: Guy Cole (guycole at gmail dot com)
 #

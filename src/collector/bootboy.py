@@ -32,25 +32,27 @@ class BootBoy:
 
         # Compose new config dict for YAML output
         receiver = config_data.get("receiver", {})
-        geoLoc = config_data.get("geoLoc", {})
-        crateName = config_data.get("crateName", "xxx")
-        hostName = config_data.get("hostName", target)
-        type_val = config_data.get("type", "xxx")
+        geo_loc = config_data.get("geoLoc", {})
+        crate_name = config_data.get("crateName", "xxx")
+        host_name = config_data.get("hostName", target)
+        host_type = config_data.get("type", "xxx")
 
         yaml_config = {
-            "crateName": crateName,
+            "crateName": crate_name,
+            "dump978filename": "/tmp/aircraft.json",
             "dump1090url": "http://localhost:8080/data.json",
-            "equipment": {
-                "hostName": hostName,
-                "type": type_val,
+            "host": {
+                "name": host_name,
+                "type": host_type,
             },
             "receiver": {
                 "antenna": receiver.get("antenna", "xxx"),
                 "receiver_id": receiver.get("id", "xxx"),
+                "task": receiver.get("task", "xxx"),
                 "type": receiver.get("type", "xxx"),
             },
             "freshDir": "/var/wombat/fresh/hyena",
-            "geoLoc": geoLoc,
+            "geoLoc": geo_loc,
         }
 
         # Write to config.yaml in the current directory
@@ -64,7 +66,7 @@ class BootBoy:
 
     def crontab(self) -> None:
         import subprocess
-        crontab_entry = "* * * * * /home/wombat/Documents/github/mellow-hyena-v2/bin/adsb-collector.sh > /dev/null 2>&1"
+        crontab_entry = "* * * * * /home/wombat/Documents/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
 
         try:
             # Always operate on the 'wombat' user's crontab
@@ -95,7 +97,7 @@ class BootBoy:
             print(f"Error updating wombat's crontab: {e}")
 
     def execute(self, target: str) -> None:
-        self.configuration(target)
+        task = self.configuration(target)
         self.crontab()
 
 #
@@ -103,7 +105,7 @@ class BootBoy:
 #
 if __name__ == "__main__":
     target = socket.gethostname()
-    target = "pi4k"
+    #target = "pi4k"
 
     bb = BootBoy()
     bb.execute(target)
