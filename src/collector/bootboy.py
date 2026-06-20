@@ -32,7 +32,9 @@ class BootBoy:
 
     def run_systemctl(self, action: str, service_name: str) -> tuple[int, str]:
         import subprocess
-        cmd = ["systemctl", action, service_name]
+        # Use --no-block for start so systemd queues the job and returns
+        # immediately, preventing a deadlock when bootboy itself runs under systemd.
+        cmd = ["systemctl", "--no-block", action, service_name] if action == "start" else ["systemctl", action, service_name]
         proc = subprocess.run(cmd, capture_output=True, text=True)
         stderr = proc.stderr.strip()
         return proc.returncode, stderr
