@@ -47,10 +47,34 @@ class Collector:
         self.receiver_type = configuration["receiver"]["type"]
 
     def dump978(self) -> list[dict[str, any]]:
-        dump978out = "/tmp/aircraft.json"
+        buffer = {}
 
-        raw = []
-        return []
+        with open(self.dump978_filename, "r", encoding="utf-8") as infile:
+            try:
+                buffer = json.load(infile)
+                if len(buffer) < 1:
+                    print(f"empty file noted: {self.dump978_filename}")
+                    return []
+            except:
+                print(f"file read error: {self.dump978_filename}")
+
+        results = []    
+        raw = buffer.get("aircraft", [])
+        for element in raw:
+            #   {"hex":"a6128d","lat":38.054087,"lon":-122.454450,"seen_pos":54,"altitude":4400,"vert_rate":192,"track":322,"speed":99,"messages":4,"seen":54,"rssi":0}
+
+            temp = {
+                "hex": element.get("hex", "unknown").strip(),
+                "latitude": str(element.get("lat", 0.0)).strip(),
+                "longitude": str(element.get("lon", 0.0)).strip(),
+                "altitude": str(element.get("altitude", 0)).strip(),
+                "track": str(element.get("track", 0)).strip(),
+                "speed": str(element.get("speed", 0)).strip(),
+            }
+
+            results.append(temp)
+
+        return results
     
     def dump1090(self) -> list[dict[str, any]]:
         raw = []
@@ -99,8 +123,10 @@ class Collector:
         outfile_json = f"{self.fresh_dir}/{base_file_name}.json"
 
         if "adsb" in self.receiver_task:
+            mode = "dump1090"
             observations = self.dump1090()
         elif "uat" in self.receiver_task:
+            mode = "dump978"
             observations = self.dump978()
         else:
             print(f"unkown stunt {self.receiver_task}")
@@ -130,8 +156,8 @@ class Collector:
             },
             "crate": self.crate_name,
             "fileName": f"{base_file_name}.json",
-            "mode": "dump1090",
-            "project": "hyena-adsb-v2",
+            "mode": mode,
+            "project": self.receiver_task,
             "version": 1,
             "adsbex": adsbex,
             "observations": observations
