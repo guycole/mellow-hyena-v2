@@ -46,6 +46,12 @@ class Collector:
         self.receiver_task = configuration["receiver"]["task"]
         self.receiver_type = configuration["receiver"]["type"]
 
+    def dump978(self) -> list[dict[str, any]]:
+        dump978out = "/tmp/aircraft.json"
+
+        raw = []
+        return []
+    
     def dump1090(self) -> list[dict[str, any]]:
         raw = []
 
@@ -79,14 +85,8 @@ class Collector:
         except Exception as error:
             print(error)
 
-    def dump978(self) -> list[dict[str, any]]:
-        dump978out = "/tmp/aircraft.json"
-
-        raw = []
-        return []
-
-    def execute2(self, stunt) -> None:
-        print(f"collector execute:{stunt}")
+    def execute(self) -> None:
+        print(f"collector execute: {self.receiver_task}")
 
         base_file_name = str(uuid.uuid4())
         print(f"base filename: {base_file_name}")
@@ -98,16 +98,14 @@ class Collector:
 
         outfile_json = f"{self.fresh_dir}/{base_file_name}.json"
 
-        if stunt == "adsb":
+        if "adsb" in self.receiver_task:
             observations = self.dump1090()
-        elif stunt == "uat":
+        elif "uat" in self.receiver_task:
             observations = self.dump978()
         else:
-            print(f"unkown stunt")
+            print(f"unkown stunt {self.receiver_task}")
 
-        observations = self.dump1090()
         candidates = [observation["hex"] for observation in observations]
-        print(candidates)
 
         adsb_exchange = AdsbExchange("bogus")
         adsbex = adsb_exchange.execute(candidates)
@@ -140,14 +138,6 @@ class Collector:
         }
 
         self.json_file_writer(outfile_json, results)
-
-    def execute(self) -> None:
-        print(f"collector execute")
-
-        if "uat" in self.receiver_task:
-            print("UAT receiver task detected.")
-        else:
-            print("adsb")
 
 #
 # argv[1] = configuration filename
