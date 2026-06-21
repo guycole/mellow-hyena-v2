@@ -49,14 +49,14 @@ class Collector:
     def dump978(self) -> list[dict[str, any]]:
         buffer = {}
 
-        with open(self.dump978_filename, "r", encoding="utf-8") as infile:
+        with open(self.dump978filename, "r", encoding="utf-8") as infile:
             try:
                 buffer = json.load(infile)
                 if len(buffer) < 1:
-                    print(f"empty file noted: {self.dump978_filename}")
+                    print(f"empty file noted: {self.dump978filename}")
                     return []
             except:
-                print(f"file read error: {self.dump978_filename}")
+                print(f"file read error: {self.dump978filename}")
 
         results = []    
         raw = buffer.get("aircraft", [])
