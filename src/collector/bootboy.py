@@ -146,30 +146,13 @@ class BootBoy:
         import subprocess
         crontab_entry = "* * * * * /home/wombat/Documents/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
 
-        try:
-            # The wombat user is dedicated to this workload.
-            # Enforce exactly one current cron entry to remove stale lines.
-            result = subprocess.run(["crontab", "-u", "wombat", "-l"], capture_output=True, text=True)
-            if result.returncode == 0:
-                current_crontab = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-            else:
-                current_crontab = []
-        except Exception as e:
-            print(f"Error reading wombat's crontab: {e}")
-            return
-
-        desired_crontab = [crontab_entry]
-
-        # Skip write if already exactly correct.
-        if current_crontab == desired_crontab:
-            print("Crontab entry already exists for wombat.")
-            return
-
-        new_crontab = "\n".join(desired_crontab) + "\n"
+        # Always overwrite — wombat is dedicated to this workload and must have
+        # exactly one cron entry.  This removes any stale entries unconditionally.
+        new_crontab = crontab_entry + "\n"
         try:
             proc = subprocess.run(["crontab", "-u", "wombat", "-"], input=new_crontab, text=True)
             if proc.returncode == 0:
-                print("Crontab replaced successfully for wombat.")
+                print("Crontab updated for wombat.")
             else:
                 print("Failed to update wombat's crontab.")
         except Exception as e:
