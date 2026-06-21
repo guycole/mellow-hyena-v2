@@ -85,7 +85,7 @@ class Collector:
         except Exception as error:
             print(error)
 
-    def execute(self) -> None:
+    def execute(self, adsbex_key:str) -> None:
         print(f"collector execute: {self.receiver_task}")
 
         base_file_name = str(uuid.uuid4())
@@ -107,7 +107,7 @@ class Collector:
 
         candidates = [observation["hex"] for observation in observations]
 
-        adsb_exchange = AdsbExchange("bogus")
+        adsb_exchange = AdsbExchange(adsbex_key)
         adsbex = adsb_exchange.execute(candidates)
 
         results = {
@@ -148,11 +148,18 @@ if __name__ == "__main__":
     else:
         file_name = "config.yaml"
 
+    with open("adsbex.key", "r") as key_file:
+        try:
+            adsbex_key = key_file.read().strip()
+        except Exception as error:
+            print(error)
+            adsbex_key = None
+
     with open(file_name, "r") as in_file:
         try:
             configuration = yaml.load(in_file, Loader=SafeLoader)
             collector = Collector(configuration)
-            collector.execute()
+            collector.execute(adsbex_key)
         except yaml.YAMLError as error:
             print(error)
 
