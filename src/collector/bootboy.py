@@ -135,14 +135,14 @@ class BootBoy:
                 return
 
     def manage_dump1090(self, receiver_task: str) -> None:
-        if "adsb" in receiver_task.lower():
+        if "dump1090" in receiver_task.lower():
             self.start_systemd_service("dump1090.service")
             return
 
         print("dump1090.service not managed for non-ADSB receiver task.")
 
     def manage_dump978(self, receiver_task: str) -> None:
-        if "uat" in receiver_task.lower():
+        if "dump978" in receiver_task.lower():
             self.start_systemd_service("dump978.service")
             return
 
@@ -150,7 +150,7 @@ class BootBoy:
 
     def crontab(self) -> None:
         import subprocess
-        crontab_entry = "* * * * * /home/wombat/Documents/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
+        crontab_entry = "* * * * * /home/wombat/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
 
         # Always overwrite — wombat is dedicated to this workload and must have
         # exactly one cron entry.  This removes any stale entries unconditionally.
@@ -158,11 +158,11 @@ class BootBoy:
         try:
             proc = subprocess.run(["crontab", "-u", "wombat", "-"], input=new_crontab, text=True)
             if proc.returncode == 0:
-                print("Crontab updated for wombat.")
+                print("crontab updated for wombat.")
             else:
-                print("Failed to update wombat's crontab.")
+                print("Failed to update wombat crontab.")
         except Exception as e:
-            print(f"Error updating wombat's crontab: {e}")
+            print(f"Error updating wombat crontab: {e}")
 
     def execute(self, target: str) -> None:
         config = self.configuration(target)
