@@ -4,15 +4,11 @@
 # Development Environment: Ubuntu 22.04.5 LTS/python 3.10.12
 # Author: G.S. Cole (guycole at gmail dot com)
 #
-import datetime
 import json
 import os
 import platform
 import socket
 import sys
-import time
-import uuid
-import zoneinfo
 
 import yaml
 from yaml.loader import SafeLoader
@@ -39,7 +35,7 @@ class BootBoy:
         stderr = proc.stderr.strip()
         return proc.returncode, stderr
 
-    def configuration(self, target: str) -> dict[str, str]:
+    def configuration(self, target: str) -> dict[str, any]:
         print(f"BootBoy: configuring {target}")
 
         # Build the path to the admin JSON file
@@ -54,28 +50,38 @@ class BootBoy:
 
         # Compose new config dict for YAML output
         receiver = config_data.get("receiver", {})
+        task = receiver.get("task", "xxx")
         geo_loc = config_data.get("geoLoc", {})
         crate_name = config_data.get("crateName", "xxx")
         host_name = config_data.get("hostName", target)
         host_type = config_data.get("type", "xxx")
 
+        if task == "hyena-v2-dump978":
+            mode = "dump978"
+        else:
+            mode = "dump1090"
+
         yaml_config = {
             "crateName": crate_name,
-            "dump978filename": "/tmp/aircraft.json",
-            "dump1090url": "http://localhost:8080/data.json",
-            "host": {
-                "name": host_name,
-                "type": host_type,
+            "equipment": {
+                "hostName": host_name,
+                "hostType": host_type,
             },
             "receiver": {
                 "antenna": receiver.get("antenna", "xxx"),
-                "receiver_id": receiver.get("id", "xxx"),
+                "mode": mode,
+                "receiverId": receiver.get("id", "xxx"),
                 "task": receiver.get("task", "xxx"),
                 "type": receiver.get("type", "xxx"),
             },
             "freshDir": "/var/wombat/fresh/hyena",
             "geoLoc": geo_loc,
         }
+
+        if mode == "dump978":
+            yaml_config["dump978Filename"] = "/tmp/aircraft.json"
+        else:
+            yaml_config["dump1090Url"] = "http://localhost:8080/data.json"
 
         # Write to config.yaml in the current directory
         try:
