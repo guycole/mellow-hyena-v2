@@ -27,24 +27,24 @@ class Collector:
     """make the observation file"""
 
     def __init__(self, args: dict[str, any]):
-        self.dump1090url = args["dump1090url"]
-        self.dump978filename = args["dump978filename"]
+        self.dump1090url = args["dump1090Url"]
+        self.dump978filename = args["dump978Filename"]
 
         self.crate_name = args["crateName"]
-        self.fresh_dir = configuration["freshDir"]
+        self.fresh_dir = args["freshDir"]
 
-        self.host_name = configuration['host']["name"]
-        self.host_type = configuration['host']["type"]
+        self.host_name = args['host']["name"]
+        self.host_type = args['host']["type"]
 
-        self.altitude = configuration["geoLoc"]["altitude"]
-        self.latitude = configuration["geoLoc"]["latitude"]
-        self.longitude = configuration["geoLoc"]["longitude"]
-        self.site_name = configuration["geoLoc"]["siteName"]
+        self.altitude = args["geoLoc"]["altitude"]
+        self.latitude = args["geoLoc"]["latitude"]
+        self.longitude = args["geoLoc"]["longitude"]
+        self.site_name = args["geoLoc"]["siteName"]
 
-        self.antenna = configuration["receiver"]["antenna"]
-        self.receiver_id = configuration["receiver"]["receiver_id"]
-        self.receiver_task = configuration["receiver"]["task"]
-        self.receiver_type = configuration["receiver"]["type"]
+        self.antenna = args["receiver"]["antenna"]
+        self.receiver_id = args["receiver"]["receiver_id"]
+        self.receiver_task = args["receiver"]["task"]
+        self.receiver_type = args["receiver"]["type"]
 
     def dump978(self) -> list[dict[str, any]]:
         buffer = {}
@@ -122,14 +122,14 @@ class Collector:
 
         outfile_json = f"{self.fresh_dir}/{base_file_name}.json"
 
-        if "adsb" in self.receiver_task:
+        if "dump1090" in self.receiver_task:
             mode = "dump1090"
             observations = self.dump1090()
-        elif "uat" in self.receiver_task:
+        elif "dump978" in self.receiver_task:
             mode = "dump978"
             observations = self.dump978()
         else:
-            print(f"unkown stunt {self.receiver_task}")
+            print(f"unknown receiver task: {self.receiver_task}")
 
         candidates = [observation["hex"] for observation in observations]
 
