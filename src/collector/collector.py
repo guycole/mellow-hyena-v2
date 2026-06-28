@@ -27,8 +27,11 @@ class Collector:
     """make the observation file"""
 
     def __init__(self, args: dict[str, any]):
-        self.dump1090url = args["dump1090Url"]
-        self.dump978filename = args["dump978Filename"]
+        if "dump1090" in args["receiver"]["task"]:
+            self.dump1090url = args["dump1090Url"]
+
+        if "dump978" in args["receiver"]["task"]:
+            self.dump978filename = args["dump978Filename"]
 
         self.crate_name = args["crateName"]
         self.fresh_dir = args["freshDir"]
