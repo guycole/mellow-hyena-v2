@@ -45,7 +45,7 @@ class Collector:
         self.site_name = args["geoLoc"]["siteName"]
 
         self.antenna = args["receiver"]["antenna"]
-        self.receiver_id = args["receiver"]["receiver_id"]
+        self.receiver_id = args["receiver"]["receiverId"]
         self.receiver_task = args["receiver"]["task"]
         self.receiver_type = args["receiver"]["type"]
 
