@@ -36,8 +36,8 @@ class Collector:
         self.crate_name = args["crateName"]
         self.fresh_dir = args["freshDir"]
 
-        self.host_name = args['host']["name"]
-        self.host_type = args['host']["type"]
+        self.host_name = args['equipment']["hostName"]
+        self.host_type = args['equipment']["hostType"]
 
         self.altitude = args["geoLoc"]["altitude"]
         self.latitude = args["geoLoc"]["latitude"]
