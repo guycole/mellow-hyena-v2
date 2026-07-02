@@ -102,6 +102,7 @@ class BootBoy:
             return
 
         if not self.can_manage_systemd("dump1090.service"):
+            print("dump1090.service not managed because systemd cannot be managed on this system.")
             return
 
         # Only start — never enable. dump1090 must not auto-start at boot;
@@ -119,6 +120,7 @@ class BootBoy:
             return
 
         if not self.can_manage_systemd("dump978.service"):
+            print("dump978.service not managed because systemd cannot be managed on this system.")
             return
 
         # Only start — never enable. dump978 must not auto-start at boot;
