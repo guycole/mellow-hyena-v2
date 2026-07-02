@@ -8,7 +8,7 @@ After=multi-user.target
 User=root
 ExecStart=/usr/local/bin/dump1090 --net
 StandardOutput=null
-Restart=always
+Restart=no
 
-[Install]
-WantedBy=multi-user.target
+# No [Install] section — dump1090 is not auto-started at boot.
+# It is started on-demand by bootboy.py via 'systemctl start dump1090.service'.

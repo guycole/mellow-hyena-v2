@@ -96,57 +96,39 @@ class BootBoy:
             "receiver_task": receiver.get("task", "xxx"),
         }
 
-    def manage_systemd_service(self, service_name: str, receiver_task: str, task_name: str) -> None:
-        if not self.can_manage_systemd(service_name):
-            return
-
-        if task_name not in receiver_task.lower():
-            print(f"{service_name} not managed for non-{task_name.upper()} receiver task.")
-            return
-
-        for action in ("enable", "start"):
-            try:
-                returncode, stderr = self.run_systemctl(action, service_name)
-            except Exception as e:
-                print(f"Error managing {service_name}: {e}")
-                return
-
-            if returncode == 0:
-                print(f"{service_name} {action}d successfully.")
-            else:
-                print(f"Failed to {action} {service_name}: {stderr}")
-                return
-
-    def start_systemd_service(self, service_name: str) -> None:
-        if not self.can_manage_systemd(service_name):
-            return
-
-        for action in ("enable", "start"):
-            try:
-                returncode, stderr = self.run_systemctl(action, service_name)
-            except Exception as e:
-                print(f"Error managing {service_name}: {e}")
-                return
-
-            if returncode == 0:
-                print(f"{service_name} {action}d successfully.")
-            else:
-                print(f"Failed to {action} {service_name}: {stderr}")
-                return
-
     def manage_dump1090(self, receiver_task: str) -> None:
-        if "dump1090" in receiver_task.lower():
-            self.start_systemd_service("dump1090.service")
+        if "dump1090" not in receiver_task.lower():
+            print("dump1090.service not managed for non-ADSB receiver task.")
             return
 
-        print("dump1090.service not managed for non-ADSB receiver task.")
+        if not self.can_manage_systemd("dump1090.service"):
+            return
+
+        # Only start — never enable. dump1090 must not auto-start at boot;
+        # bootboy.py is the sole entry point that starts this service.
+        print("starting dump1090 service")
+        returncode, stderr = self.run_systemctl("start", "dump1090.service")
+        if returncode == 0:
+            print("dump1090.service started successfully.")
+        else:
+            print(f"Failed to start dump1090.service: {stderr}")
 
     def manage_dump978(self, receiver_task: str) -> None:
-        if "dump978" in receiver_task.lower():
-            self.start_systemd_service("dump978.service")
+        if "dump978" not in receiver_task.lower():
+            print("dump978.service not managed for non-UAT receiver task.")
             return
 
-        print("dump978.service not managed for non-UAT receiver task.")
+        if not self.can_manage_systemd("dump978.service"):
+            return
+
+        # Only start — never enable. dump978 must not auto-start at boot;
+        # bootboy.py is the sole entry point that starts this service.
+        print("starting dump978 service")
+        returncode, stderr = self.run_systemctl("start", "dump978.service")
+        if returncode == 0:
+            print("dump978.service started successfully.")
+        else:
+            print(f"Failed to start dump978.service: {stderr}")
 
     def crontab(self) -> None:
         import subprocess
