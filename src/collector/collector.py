@@ -24,26 +24,61 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger("hyena-adsb")
 
 class Collector:
-    """make the iwlist observation file"""
+    """make the observation file"""
 
     def __init__(self, args: dict[str, any]):
-        self.dump1090url = args["dump1090url"]
+        if "dump1090" in args["receiver"]["task"]:
+            self.dump1090url = args["dump1090Url"]
+
+        if "dump978" in args["receiver"]["task"]:
+            self.dump978filename = args["dump978Filename"]
 
         self.crate_name = args["crateName"]
-        self.fresh_dir = configuration["freshDir"]
+        self.fresh_dir = args["freshDir"]
 
-        self.host_name = configuration['equipment']["hostName"]
-        self.host_type = configuration['equipment']["type"]
+        self.host_name = args['equipment']["hostName"]
+        self.host_type = args['equipment']["hostType"]
 
-        self.altitude = configuration["geoLoc"]["altitude"]
-        self.latitude = configuration["geoLoc"]["latitude"]
-        self.longitude = configuration["geoLoc"]["longitude"]
-        self.site_name = configuration["geoLoc"]["siteName"]
+        self.altitude = args["geoLoc"]["altitude"]
+        self.latitude = args["geoLoc"]["latitude"]
+        self.longitude = args["geoLoc"]["longitude"]
+        self.site_name = args["geoLoc"]["siteName"]
 
-        self.antenna = configuration["receiver"]["antenna"]
-        self.receiver_id = configuration["receiver"]["receiver_id"]
-        self.receiver_type = configuration["receiver"]["type"]
+        self.antenna = args["receiver"]["antenna"]
+        self.receiver_id = args["receiver"]["receiverId"]
+        self.receiver_task = args["receiver"]["task"]
+        self.receiver_type = args["receiver"]["type"]
 
+    def dump978(self) -> list[dict[str, any]]:
+        buffer = {}
+
+        with open(self.dump978filename, "r", encoding="utf-8") as infile:
+            try:
+                buffer = json.load(infile)
+                if len(buffer) < 1:
+                    print(f"empty file noted: {self.dump978filename}")
+                    return []
+            except:
+                print(f"file read error: {self.dump978filename}")
+
+        results = []    
+        raw = buffer.get("aircraft", [])
+        for element in raw:
+            #   {"hex":"a6128d","lat":38.054087,"lon":-122.454450,"seen_pos":54,"altitude":4400,"vert_rate":192,"track":322,"speed":99,"messages":4,"seen":54,"rssi":0}
+
+            temp = {
+                "hex": element.get("hex", "unknown").strip(),
+                "latitude": str(element.get("lat", 0.0)).strip(),
+                "longitude": str(element.get("lon", 0.0)).strip(),
+                "altitude": str(element.get("altitude", 0)).strip(),
+                "track": str(element.get("track", 0)).strip(),
+                "speed": str(element.get("speed", 0)).strip(),
+            }
+
+            results.append(temp)
+
+        return results
+    
     def dump1090(self) -> list[dict[str, any]]:
         raw = []
 
@@ -77,8 +112,8 @@ class Collector:
         except Exception as error:
             print(error)
 
-    def execute(self) -> None:
-        print(f"collector execute")
+    def execute(self, adsbex_key:str) -> None:
+        print(f"collector execute: {self.receiver_task}")
 
         base_file_name = str(uuid.uuid4())
         print(f"base filename: {base_file_name}")
@@ -90,11 +125,18 @@ class Collector:
 
         outfile_json = f"{self.fresh_dir}/{base_file_name}.json"
 
-        observations = self.dump1090()
-        candidates = [observation["hex"] for observation in observations]
-        print(candidates)
+        if "dump1090" in self.receiver_task:
+            mode = "dump1090"
+            observations = self.dump1090()
+        elif "dump978" in self.receiver_task:
+            mode = "dump978"
+            observations = self.dump978()
+        else:
+            print(f"unknown receiver task: {self.receiver_task}")
 
-        adsb_exchange = AdsbExchange("bogus")
+        candidates = [observation["hex"] for observation in observations]
+
+        adsb_exchange = AdsbExchange(adsbex_key)
         adsbex = adsb_exchange.execute(candidates)
 
         results = {
@@ -117,8 +159,8 @@ class Collector:
             },
             "crate": self.crate_name,
             "fileName": f"{base_file_name}.json",
-            "mode": "dump1090",
-            "project": "hyena-adsb-v2",
+            "mode": mode,
+            "project": self.receiver_task,
             "version": 1,
             "adsbex": adsbex,
             "observations": observations
@@ -135,11 +177,18 @@ if __name__ == "__main__":
     else:
         file_name = "config.yaml"
 
+    with open("adsbex.key", "r") as key_file:
+        try:
+            adsbex_key = key_file.read().strip()
+        except Exception as error:
+            print(error)
+            adsbex_key = None
+
     with open(file_name, "r") as in_file:
         try:
             configuration = yaml.load(in_file, Loader=SafeLoader)
             collector = Collector(configuration)
-            collector.execute()
+            collector.execute(adsbex_key)
         except yaml.YAMLError as error:
             print(error)
 

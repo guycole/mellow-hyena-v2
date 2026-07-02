@@ -6,9 +6,9 @@ After=multi-user.target
 
 [Service]
 User=root
-ExecStart=/home/gsc/Documents/github/mellow-hyena/bin/dump978.sh
+ExecStart=/home/wombat/github/mellow-hyena-v2/bin/dump978.sh
 StandardOutput=null
-Restart=always
+Restart=no
 
-[Install]
-WantedBy=multi-user.target
+# No [Install] section — dump978 is not auto-started at boot.
+# It is started on-demand by bootboy.py via 'systemctl start dump978.service'.

@@ -4,20 +4,38 @@
 # Development Environment: Ubuntu 22.04.5 LTS/python 3.10.12
 # Author: G.S. Cole (guycole at gmail dot com)
 #
-import datetime
 import json
+import os
+import platform
 import socket
 import sys
-import time
-import uuid
-import zoneinfo
 
 import yaml
 from yaml.loader import SafeLoader
 
 class BootBoy:
 
-    def configuration(self, target: str) -> None:
+    def can_manage_systemd(self, service_name: str) -> bool:
+        if platform.system() != "Linux":
+            print(f"{service_name} management skipped on non-Linux host.")
+            return False
+
+        if os.geteuid() != 0:
+            print(f"{service_name} management skipped: must run as root (systemd boot path).")
+            return False
+
+        return True
+
+    def run_systemctl(self, action: str, service_name: str) -> tuple[int, str]:
+        import subprocess
+        # Use --no-block for start so systemd queues the job and returns
+        # immediately, preventing a deadlock when bootboy itself runs under systemd.
+        cmd = ["systemctl", "--no-block", action, service_name] if action == "start" else ["systemctl", action, service_name]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        stderr = proc.stderr.strip()
+        return proc.returncode, stderr
+
+    def configuration(self, target: str) -> dict[str, any]:
         print(f"BootBoy: configuring {target}")
 
         # Build the path to the admin JSON file
@@ -32,26 +50,38 @@ class BootBoy:
 
         # Compose new config dict for YAML output
         receiver = config_data.get("receiver", {})
-        geoLoc = config_data.get("geoLoc", {})
-        crateName = config_data.get("crateName", "xxx")
-        hostName = config_data.get("hostName", target)
-        type_val = config_data.get("type", "xxx")
+        task = receiver.get("task", "xxx")
+        geo_loc = config_data.get("geoLoc", {})
+        crate_name = config_data.get("crateName", "xxx")
+        host_name = config_data.get("hostName", target)
+        host_type = config_data.get("type", "xxx")
+
+        if task == "hyena-v2-dump978":
+            mode = "dump978"
+        else:
+            mode = "dump1090"
 
         yaml_config = {
-            "crateName": crateName,
-            "dump1090url": "http://localhost:8080/data.json",
+            "crateName": crate_name,
             "equipment": {
-                "hostName": hostName,
-                "type": type_val,
+                "hostName": host_name,
+                "hostType": host_type,
             },
             "receiver": {
                 "antenna": receiver.get("antenna", "xxx"),
-                "receiver_id": receiver.get("id", "xxx"),
+                "mode": mode,
+                "receiverId": receiver.get("id", "xxx"),
+                "task": receiver.get("task", "xxx"),
                 "type": receiver.get("type", "xxx"),
             },
             "freshDir": "/var/wombat/fresh/hyena",
-            "geoLoc": geoLoc,
+            "geoLoc": geo_loc,
         }
+
+        if mode == "dump978":
+            yaml_config["dump978Filename"] = "/tmp/aircraft.json"
+        else:
+            yaml_config["dump1090Url"] = "http://localhost:8080/data.json"
 
         # Write to config.yaml in the current directory
         try:
@@ -62,48 +92,87 @@ class BootBoy:
             print(f"Error writing config.yaml: {e}")
             sys.exit(1)
 
+        return {
+            "receiver_task": receiver.get("task", "xxx"),
+        }
+
+    def verify_service_active(self, service_name: str) -> None:
+        import time
+        # --no-block returns immediately; give systemd a moment to actually
+        # start (or fail to start) the service before checking.
+        time.sleep(2)
+        returncode, _ = self.run_systemctl("is-active", service_name)
+        if returncode == 0:
+            print(f"{service_name} is active.")
+        else:
+            print(f"{service_name} is NOT active after start — check: journalctl -u {service_name}")
+
+    def manage_dump1090(self, receiver_task: str) -> None:
+        if "dump1090" not in receiver_task.lower():
+            print("dump1090.service not managed for non-ADSB receiver task.")
+            return
+
+        if not self.can_manage_systemd("dump1090.service"):
+            print("dump1090.service not managed because systemd cannot be managed on this system.")
+            return
+
+        # Only start — never enable. dump1090 must not auto-start at boot;
+        # bootboy.py is the sole entry point that starts this service.
+        print("starting dump1090 service")
+        returncode, stderr = self.run_systemctl("start", "dump1090.service")
+        if returncode == 0:
+            print("dump1090.service start queued.")
+            self.verify_service_active("dump1090.service")
+        else:
+            print(f"Failed to start dump1090.service: {stderr}")
+
+    def manage_dump978(self, receiver_task: str) -> None:
+        if "dump978" not in receiver_task.lower():
+            print("dump978.service not managed for non-UAT receiver task.")
+            return
+
+        if not self.can_manage_systemd("dump978.service"):
+            print("dump978.service not managed because systemd cannot be managed on this system.")
+            return
+
+        # Only start — never enable. dump978 must not auto-start at boot;
+        # bootboy.py is the sole entry point that starts this service.
+        print("starting dump978 service")
+        returncode, stderr = self.run_systemctl("start", "dump978.service")
+        if returncode == 0:
+            print("dump978.service start queued.")
+            self.verify_service_active("dump978.service")
+        else:
+            print(f"Failed to start dump978.service: {stderr}")
+
     def crontab(self) -> None:
         import subprocess
-        crontab_entry = "* * * * * /home/wombat/Documents/github/mellow-hyena-v2/bin/adsb-collector.sh > /dev/null 2>&1"
+        crontab_entry = "* * * * * /home/wombat/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
 
-        try:
-            # Always operate on the 'wombat' user's crontab
-            result = subprocess.run(["crontab", "-u", "wombat", "-l"], capture_output=True, text=True)
-            if result.returncode == 0:
-                current_crontab = result.stdout.splitlines()
-            else:
-                current_crontab = []
-        except Exception as e:
-            print(f"Error reading wombat's crontab: {e}")
-            return
-
-        # Check if entry already exists
-        if any(crontab_entry in line for line in current_crontab):
-            print("Crontab entry already exists for wombat.")
-            return
-
-        # Add the new entry
-        current_crontab.append(crontab_entry)
-        new_crontab = "\n".join(current_crontab) + "\n"
+        # Always overwrite — wombat is dedicated to this workload and must have
+        # exactly one cron entry.  This removes any stale entries unconditionally.
+        new_crontab = crontab_entry + "\n"
         try:
             proc = subprocess.run(["crontab", "-u", "wombat", "-"], input=new_crontab, text=True)
             if proc.returncode == 0:
-                print("Crontab updated successfully for wombat.")
+                print("crontab updated for wombat.")
             else:
-                print("Failed to update wombat's crontab.")
+                print("Failed to update wombat crontab.")
         except Exception as e:
-            print(f"Error updating wombat's crontab: {e}")
+            print(f"Error updating wombat crontab: {e}")
 
     def execute(self, target: str) -> None:
-        self.configuration(target)
+        config = self.configuration(target)
         self.crontab()
+        self.manage_dump1090(config["receiver_task"])
+        self.manage_dump978(config["receiver_task"])
 
 #
 # 
 #
 if __name__ == "__main__":
     target = socket.gethostname()
-    target = "pi4k"
+    #target = "pi4k"
 
     bb = BootBoy()
     bb.execute(target)

@@ -1,0 +1,26 @@
+infra setup of systemd
+
+sudo cp dump978.service /etc/systemd/system/dump978.service
+
+must enable service
+
+sudo systemctl daemon-reload
+sudo systemctl enable dump978.service
+wombat@pi4i:182>sudo systemctl start dump978.service
+wombat@pi4i:183>sudo systemctl status dump978.service
+● dump978.service - dump978
+     Loaded: loaded (/etc/systemd/system/dump978.service; enabled; preset: enabled)
+     Active: active (running) since Fri 2026-06-19 19:26:05 UTC; 8s ago
+ Invocation: 1e251e2dfb3c4c88a4cb564922adbe82
+   Main PID: 298720 (dump978.sh)
+      Tasks: 5 (limit: 3967)
+        CPU: 619ms
+     CGroup: /system.slice/dump978.service
+             ├─298720 /bin/bash /home/wombat/Documents/github/mellow-hyena-v2/bin/dump978.sh
+             ├─298721 /usr/local/bin/rtl_sdr -f 978000000 -s 2083334 -
+             ├─298722 ./dump978
+             └─298723 ./uat2json /tmp
+
+Jun 19 19:26:05 pi4i systemd[1]: Started dump978.service - dump978.
+q
+
