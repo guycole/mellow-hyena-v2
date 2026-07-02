@@ -96,6 +96,17 @@ class BootBoy:
             "receiver_task": receiver.get("task", "xxx"),
         }
 
+    def verify_service_active(self, service_name: str) -> None:
+        import time
+        # --no-block returns immediately; give systemd a moment to actually
+        # start (or fail to start) the service before checking.
+        time.sleep(2)
+        returncode, _ = self.run_systemctl("is-active", service_name)
+        if returncode == 0:
+            print(f"{service_name} is active.")
+        else:
+            print(f"{service_name} is NOT active after start — check: journalctl -u {service_name}")
+
     def manage_dump1090(self, receiver_task: str) -> None:
         if "dump1090" not in receiver_task.lower():
             print("dump1090.service not managed for non-ADSB receiver task.")
@@ -110,7 +121,8 @@ class BootBoy:
         print("starting dump1090 service")
         returncode, stderr = self.run_systemctl("start", "dump1090.service")
         if returncode == 0:
-            print("dump1090.service started successfully.")
+            print("dump1090.service start queued.")
+            self.verify_service_active("dump1090.service")
         else:
             print(f"Failed to start dump1090.service: {stderr}")
 
@@ -128,7 +140,8 @@ class BootBoy:
         print("starting dump978 service")
         returncode, stderr = self.run_systemctl("start", "dump978.service")
         if returncode == 0:
-            print("dump978.service started successfully.")
+            print("dump978.service start queued.")
+            self.verify_service_active("dump978.service")
         else:
             print(f"Failed to start dump978.service: {stderr}")
 
