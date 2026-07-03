@@ -147,7 +147,7 @@ class BootBoy:
 
     def crontab(self) -> None:
         import subprocess
-        crontab_entry = "* * * * * /home/wombat/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
+        crontab_entry = "* * * * * $HOME/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
 
         # Always overwrite — wombat is dedicated to this workload and must have
         # exactly one cron entry.  This removes any stale entries unconditionally.
