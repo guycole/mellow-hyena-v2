@@ -7,10 +7,12 @@
 #
 PATH=/bin:/usr/bin:/etc:/usr/local/bin; export PATH
 #
+hostname=$(hostname)
+logger -p local3.info "bootboy hyena $hostname"
+#
 WORK_DIR="/home/wombat/github/mellow-hyena-v2/src/collector"
 #
 echo "start bootboy"
-
 cd $WORK_DIR
 source venv/bin/activate
 python3 ./bootboy.py

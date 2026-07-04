@@ -8,6 +8,9 @@
 PATH=/bin:/usr/bin:/etc:/usr/local/bin; export PATH
 #LD_LIBRARY_PATH=/usr/local/lib/arm-linux-gnueabihf; export LD_LIBRARY_PATH
 #
+hostname=$(hostname)
+logger -p local3.info "collector hyena $hostname"
+#
 WORK_DIR="$HOME/github/mellow-hyena-v2/src/collector"
 # 
 echo "start collection"
