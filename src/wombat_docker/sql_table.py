@@ -44,12 +44,14 @@ class LoadLog(Base):
 
     id = Column(Integer, primary_key=True)
     file_name = Column(String)
+    host_name = Column(String)
     obs_time = Column(DateTime)
     project = Column(String)
 
     def __init__(self, args: dict[str, any]):
         self.file_name = args["file_name"]
-        self.obs_time = args["file_time"]
+        self.host_name = args["host_name"]
+        self.obs_time = args["obs_time"]
         self.project = args["project"]
 
     def __repr__(self):

@@ -5,8 +5,9 @@
 create table hyena_load_log (
   id            bigserial    primary key,
   file_name     varchar(48)  unique not null,
+  host_name     varchar(32)  not null,
   obs_time      timestamp    not null default CURRENT_TIMESTAMP,
-  project       varchar(16)  not null
+  project       varchar(32)  not null
 );
 
 grant select, insert, update, delete on hyena_load_log to hyena_client;
@@ -14,4 +15,4 @@ grant usage, select on sequence hyena_load_log_id_seq to hyena_client;
 
 create index load_log_obs_date on hyena_load_log(obs_time);
 
-create unique index load_log_time_platform_project_site on hyena_load_log(obs_time, project);
+create unique index obs_time_host_project on hyena_load_log(obs_time, host_name, project);
