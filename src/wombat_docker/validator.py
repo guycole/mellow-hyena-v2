@@ -64,6 +64,7 @@ class Validator:
                 load_log = {
                     "epoch_seconds": self.raw_buffer["timeStamp"]["epochSeconds"],
                     "file_name": test_file_name,
+                    "host_name": self.raw_buffer["equipment"]["hostName"],
                     "load_time": datetime.datetime.now(),
                     "mode": self.raw_buffer["mode"],
                     "obs_quantity": len(self.raw_buffer["observations"]),
