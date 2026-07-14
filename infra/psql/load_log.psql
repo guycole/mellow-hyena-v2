@@ -2,17 +2,35 @@
 -- Title: load_log.psql
 -- Description: file load history
 --
+-- crate_name is crateName (from json)
+-- epoch_seconds is from timeStamp.epochSeconds
+-- file_name is fileName (from json)
+-- file_type is from project i.e. heeler_v2
+-- geo_loc_id joins hyena_geo_loc for location
+-- host_name is from equipment.hostName
+-- load_time is when file was processed
+-- mode is collection mode
+-- obs_quantity is population of observations in file
+-- obs_time is observation time from timeStamp.iso8601
+-- site_name is from preamble geoLoc.siteName
+--
 create table hyena_load_log (
-  id            bigserial    primary key,
-  file_name     varchar(48)  unique not null,
-  host_name     varchar(32)  not null,
-  obs_time      timestamp    not null default CURRENT_TIMESTAMP,
-  project       varchar(32)  not null
+  id             bigserial    primary key,
+  crate_name     varchar(32)  not null,
+  epoch_seconds  bigint       not null,
+  file_name      varchar(48)  unique not null,
+  file_type      varchar(48)  not null,
+  geo_loc_id     bigint       not null,
+  constraint     geo_loc_id   foreign key(geo_loc_id) references hyena_geo_loc(id),
+  host_name      varchar(16)  not null,
+  load_time      timestamp    not null default CURRENT_TIMESTAMP,
+  mode           varchar(32)  not null,
+  obs_quantity   smallint     not null,
+  obs_time       timestamp    not null,
+  site_name      varchar(48)  not null
 );
 
 grant select, insert, update, delete on hyena_load_log to hyena_client;
 grant usage, select on sequence hyena_load_log_id_seq to hyena_client;
 
-create index load_log_obs_date on hyena_load_log(obs_time);
-
-create unique index obs_time_host_project on hyena_load_log(obs_time, host_name, project);
+create unique index hyena_load_log_ndx on hyena_load_log(crate_name, host_name, epoch_seconds);

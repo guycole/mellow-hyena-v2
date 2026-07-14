@@ -7,6 +7,12 @@
 #
 psql -U postgres template1 (or psql -U gsc template1)
 
+# (mac) user
+createuser -U gsc -d -e -l -P -r -s hyena_admin
+woofwoof
+createuser -U gsc -e -l -P hyena_client
+batabat
+
 # (linux) su - postgres
 createuser -U postgres -d -e -l -P -r -s hyena_admin
 woofwoof
@@ -18,6 +24,7 @@ batabat
 # create tablespace hyena location '/mnt/pp1/postgres/hyena';
 
 createdb hyena -O hyena_admin -D hyena -E UTF8 -T template0 -l C
+createdb hyena -O hyena_admin -E UTF8 -T template0 -l C
 
 # psql -h localhost -p 5432 -U hyena_admin -d hyena
 # psql -h localhost -p 5432 -U hyena_client -d hyena

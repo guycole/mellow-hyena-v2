@@ -1,0 +1,35 @@
+--
+-- Title: adsb_exchange.psql
+-- Description: amplifying data from adsb exchange
+--
+-- "adsb_hex": "a324b0" (version)
+-- "category": "A3"
+-- "emergency": "none"
+-- "flight": "SKW3649"
+-- "registration": "N301SY"
+-- "model": "E75L"
+-- "ladd_flag": false
+-- "military_flag": false
+-- "pia_flag": false
+-- "wierdo_flag": false
+--
+create table hyena_adsb_exchange (
+  id             bigserial    primary key,
+  adsb_hex       varchar(16)  not null,
+  category       varchar(4)   not null,
+  emergency      varchar(8)   not null,
+  flight         varchar(32)  not null,
+  model          varchar(32)  not null,
+  registration   varchar(16)  not null,
+  ladd_flag      boolean      not null,
+  military_flag  boolean      not null,
+  pia_flag       boolean      not null,
+  wierdo_flag    boolean      not null
+);
+
+grant select, insert, update, delete on hyena_adsb_exchange to hyena_client;
+grant usage, select on sequence hyena_adsb_exchange_id_seq to hyena_client;
+
+create index hyena_adsb_ndx1 on hyena_adsb_exchange(adsb_hex);
+
+insert into hyena_adsb_exchange(adsb_hex, category, emergency, flight, model, registration, ladd_flag, military_flag, pia_flag, wierdo_flag) values('pytest', 'xxx', 'pytest', 'pytest', 'pytest', 'pytest', false, false, false, false);
