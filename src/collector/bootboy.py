@@ -160,8 +160,6 @@ class BootBoy:
         self.manage_dump978(config["receiver_task"])
 
 #
-# 
-#
 if __name__ == "__main__":
     target = socket.gethostname()
     #target = "pi4k"
