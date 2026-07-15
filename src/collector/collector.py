@@ -1,6 +1,6 @@
 #
 # Title: collector.py
-# Description: 
+# Description: perform adsb or uat collection
 # Development Environment: Ubuntu 22.04.5 LTS/python 3.10.12
 # Author: G.S. Cole (guycole at gmail dot com)
 #
@@ -12,6 +12,7 @@ import requests
 import socket
 import sys
 import time
+from typing import Any
 import uuid
 import zoneinfo
 
@@ -21,12 +22,12 @@ from yaml.loader import SafeLoader
 from adsb_exchange import AdsbExchange
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-logger = logging.getLogger("hyena-adsb")
+logger = logging.getLogger("hyena")
 
 class Collector:
     """make the observation file"""
 
-    def __init__(self, args: dict[str, any]):
+    def __init__(self, args: dict[str, Any]):
         if "dump1090" in args["receiver"]["task"]:
             self.dump1090url = args["dump1090Url"]
 
@@ -49,20 +50,31 @@ class Collector:
         self.receiver_task = args["receiver"]["task"]
         self.receiver_type = args["receiver"]["type"]
 
-    def dump978(self) -> list[dict[str, any]]:
-        buffer = {}
-
-        with open(self.dump978filename, "r", encoding="utf-8") as infile:
-            try:
+    def dump978(self) -> list[dict[str, Any]]:
+        try:
+            with open(self.dump978filename, "r", encoding="utf-8") as infile:
                 buffer = json.load(infile)
-                if len(buffer) < 1:
-                    print(f"empty file noted: {self.dump978filename}")
-                    return []
-            except:
-                print(f"file read error: {self.dump978filename}")
+        except OSError:
+            logger.exception("dump978 file open error: %s", self.dump978filename)
+            return []
+        except json.JSONDecodeError:
+            logger.exception("dump978 file read error: %s", self.dump978filename)
+            return []
 
-        results = []    
-        raw = buffer.get("aircraft", [])
+        if not isinstance(buffer, dict):
+            logger.warning("dump978 payload is not an object: %s", self.dump978filename)
+            return []
+
+        raw = buffer.get("aircraft")
+        if not isinstance(raw, list):
+            logger.warning("dump978 missing aircraft list: %s", self.dump978filename)
+            return []
+
+        if not raw:
+            logger.info("empty dump978 aircraft list: %s", self.dump978filename)
+            return []
+
+        results = []
         for element in raw:
             #   {"hex":"a6128d","lat":38.054087,"lon":-122.454450,"seen_pos":54,"altitude":4400,"vert_rate":192,"track":322,"speed":99,"messages":4,"seen":54,"rssi":0}
 
@@ -79,7 +91,7 @@ class Collector:
 
         return results
     
-    def dump1090(self) -> list[dict[str, any]]:
+    def dump1090(self) -> list[dict[str, Any]]:
         raw = []
 
         try:
@@ -87,7 +99,7 @@ class Collector:
             if response.status_code == 200:
                 raw = json.loads(response.text)
         except Exception as error:
-            print(f"dump1090 error: {error}")
+            logger.error("dump1090 error: %s", error)
 
         results = []
         for element in raw:
@@ -105,18 +117,20 @@ class Collector:
 
         return results
     
-    def json_file_writer(self, file_name: str, json_data: dict[str, any]) -> None:
+    def json_file_writer(self, file_name: str, json_data: dict[str, Any]) -> None:
+        print(file_name)
+        
         try:
             with open(file_name, "w") as out_file:
                 json.dump(json_data, out_file, indent=4)
         except Exception as error:
-            print(error)
+            logger.exception("json write error for %s: %s", file_name, error)
 
-    def execute(self, adsbex_key:str) -> None:
-        print(f"collector execute: {self.receiver_task}")
+    def execute(self, adsbex_key: str | None) -> None:
+        logger.info("collector execute: %s", self.receiver_task)
 
         base_file_name = str(uuid.uuid4())
-        print(f"base filename: {base_file_name}")
+        logger.info("base filename: %s", base_file_name)
 
         epoch_seconds = int(time.time())
         dt_object_utc = datetime.datetime.fromtimestamp(
@@ -132,20 +146,25 @@ class Collector:
             mode = "dump978"
             observations = self.dump978()
         else:
-            print(f"unknown receiver task: {self.receiver_task}")
+            logger.error("unknown receiver task: %s", self.receiver_task)
+            return
 
         candidates = [observation["hex"] for observation in observations]
 
-        adsb_exchange = AdsbExchange(adsbex_key)
-        adsbex = adsb_exchange.execute(candidates)
+        adsbex = {}
+        if adsbex_key:
+            adsb_exchange = AdsbExchange(adsbex_key)
+            adsbex = adsb_exchange.execute(candidates)
+        else:
+            logger.warning("skipping ADS-B Exchange lookup because no API key is available")
 
         results = {
             "equipment": {
                 "antenna": self.antenna,  
-                "receiver_id": self.receiver_id,
-                "receiver_type": self.receiver_type,
-                "platform": self.host_type,
-                "hostName": self.host_name  
+                "receiverId": self.receiver_id,
+                "receiverType": self.receiver_type,
+                "hostName": self.host_name,  
+                "hostType": self.host_type,
             },
             "geoLoc": {
                 "altitude": self.altitude,
@@ -157,7 +176,7 @@ class Collector:
                 "epochSeconds": epoch_seconds,
                 "iso8601": dt_object_utc.isoformat()
             },
-            "crate": self.crate_name,
+            "crateName": self.crate_name,
             "fileName": f"{base_file_name}.json",
             "mode": mode,
             "project": self.receiver_task,
@@ -181,7 +200,7 @@ if __name__ == "__main__":
         try:
             adsbex_key = key_file.read().strip()
         except Exception as error:
-            print(error)
+            logger.exception("adsbex key read error: %s", error)
             adsbex_key = None
 
     with open(file_name, "r") as in_file:
@@ -190,7 +209,7 @@ if __name__ == "__main__":
             collector = Collector(configuration)
             collector.execute(adsbex_key)
         except yaml.YAMLError as error:
-            print(error)
+            logger.exception("configuration parse error: %s", error)
 
 # ;;; Local Variables: ***
 # ;;; mode:python ***

@@ -1,26 +1,17 @@
-{
-    "equipment": {
-        "antenna": "multicoupler",
-        "receiver_id": 12,
-        "receiver_type": "rtl-sdr-v4",
-        "platform": "rpi4",
-        "hostName": "pi4h"
-    },
-    "geoLoc": {
-        "altitude": 0,
-        "latitude": 38.108,
-        "longitude": -122.268,
-        "siteName": "vallejo01"
-    },
-    "timeStamp": {
-        "epochSeconds": 1784104764,
-        "iso8601": "2026-07-15T08:39:24+00:00"
-    },
-    "crate": "wombat04",
-    "fileName": "8246ef81-93be-463e-8642-63d0d343aa78.json",
-    "mode": "dump978",
-    "project": "hyena-v2-dump978",
-    "version": 1,
-    "adsbex": {},
-    "observations": []
-}
+crateName: wombat04
+dump978Filename: /tmp/aircraft.json
+equipment:
+  hostName: pi4h
+  hostType: rpi4
+freshDir: /var/wombat/fresh/heeler
+geoLoc:
+  altitude: 0
+  latitude: 38.108
+  longitude: -122.268
+  siteName: vallejo01
+gpsEnable: false
+receiver:
+  antenna: multicoupler
+  receiverId: 12
+  task: hyena-v2-dump978
+  type: rtl-sdr-v4
