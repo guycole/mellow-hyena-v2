@@ -5,7 +5,6 @@
 -- crate_name is crateName (from json)
 -- epoch_seconds is from timeStamp.epochSeconds
 -- file_name is fileName (from json)
--- file_type is from project i.e. heeler_v2
 -- geo_loc_id joins hyena_geo_loc for location
 -- host_name is from equipment.hostName
 -- load_time is when file was processed
@@ -13,13 +12,13 @@
 -- obs_quantity is population of observations in file
 -- obs_time is observation time from timeStamp.iso8601
 -- site_name is from preamble geoLoc.siteName
+-- task from receiver.task
 --
 create table hyena_load_log (
   id             bigserial    primary key,
   crate_name     varchar(32)  not null,
   epoch_seconds  bigint       not null,
   file_name      varchar(48)  unique not null,
-  file_type      varchar(48)  not null,
   geo_loc_id     bigint       not null,
   constraint     geo_loc_id   foreign key(geo_loc_id) references hyena_geo_loc(id),
   host_name      varchar(16)  not null,
@@ -27,7 +26,8 @@ create table hyena_load_log (
   mode           varchar(32)  not null,
   obs_quantity   smallint     not null,
   obs_time       timestamp    not null,
-  site_name      varchar(48)  not null
+  site_name      varchar(32)  not null,
+  task           varchar(32)  not null
 );
 
 grant select, insert, update, delete on hyena_load_log to hyena_client;

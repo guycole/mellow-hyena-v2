@@ -19,15 +19,9 @@ class Validator:
     def __init__(self, postgres: PostGres):
         self.postgres = postgres
 
-        # path from inside docker container
-        self.failure_dir = "/mnt/wombat/failure/"
-        self.fresh_dir = "/mnt/wombat/fresh/hyena"
-        self.success_dir = "/mnt/wombat/hyena/success/"
-
-        # path for mac development
-        # self.failure_dir = "/var/wombat/failure/"
-        # self.fresh_dir = "/var/wombat/fresh/hyena"
-        # self.success_dir = "/var/wombat/hyena/success/"
+        self.failure_dir = os.environ.get("FAILURE_DIR", "/var/wombat/failure")
+        self.fresh_dir = os.environ.get("FRESH_DIR", "/var/wombat/fresh/heeler")
+        self.success_dir = os.environ.get("SUCCESS_DIR", "/var/wombat/heeler/success")
 
         self.failure = 0
         self.success = 0
@@ -112,9 +106,9 @@ class Validator:
         targets = sorted(os.listdir("."))
         logger.info(f"{len(targets)} files noted")
 
-        for target in targets:
-            logger.info(f"target:{target}")
-            self.file_processor(target)
+#        for target in targets:
+#            logger.info(f"target:{target}")
+#            self.file_processor(target)
 
         logger.info(f"validator success:{self.success} failure:{self.failure}")
 
