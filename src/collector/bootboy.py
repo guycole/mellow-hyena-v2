@@ -156,8 +156,8 @@ class BootBoy:
     def execute(self, target: str) -> None:
         config = self.configuration(target)
         self.crontab()
-        self.manage_dump1090(config["receiver_task"])
-        self.manage_dump978(config["receiver_task"])
+        self.manage_dump1090(config["receiver"]["task"])
+        self.manage_dump978(config["receiver"]["task"])
 
 #
 if __name__ == "__main__":
