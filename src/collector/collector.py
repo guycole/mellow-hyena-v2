@@ -118,8 +118,6 @@ class Collector:
         return results
     
     def json_file_writer(self, file_name: str, json_data: dict[str, Any]) -> None:
-        print(file_name)
-        
         try:
             with open(file_name, "w") as out_file:
                 json.dump(json_data, out_file, indent=4)
@@ -146,7 +144,7 @@ class Collector:
             mode = "dump978"
             observations = self.dump978()
         else:
-            logger.error("unknown receiver task: %s", self.receiver_task)
+            logger.error("unknown collection mode: %s", self.receiver_task)
             return
 
         candidates = [observation["hex"] for observation in observations]
@@ -170,19 +168,22 @@ class Collector:
                 "altitude": self.altitude,
                 "latitude": self.latitude,
                 "longitude": self.longitude,
-                "siteName": self.site_name
+                "siteName": self.site_name,
+            },
+            "job": {
+                "mode": mode,
+                "project": "hyena-v2",
+                "task": self.receiver_task,
             },
             "timeStamp": {
                 "epochSeconds": epoch_seconds,
-                "iso8601": dt_object_utc.isoformat()
+                "iso8601": dt_object_utc.isoformat(),
             },
             "crateName": self.crate_name,
             "fileName": f"{base_file_name}.json",
-            "mode": mode,
-            "project": self.receiver_task,
             "version": 1,
             "adsbex": adsbex,
-            "observations": observations
+            "observations": observations,
         }
 
         self.json_file_writer(outfile_json, results)
