@@ -49,17 +49,11 @@ class BootBoy:
             sys.exit(1)
 
         # Compose new config dict for YAML output
-        receiver = config_data.get("receiver", {})
-        task = receiver.get("task", "xxx")
-        geo_loc = config_data.get("geoLoc", {})
         crate_name = config_data.get("crateName", "xxx")
+        geo_loc = config_data.get("geoLoc", {})
         host_name = config_data.get("hostName", target)
         host_type = config_data.get("type", "xxx")
-
-        if task == "hyena-v2-dump978":
-            mode = "dump978"
-        else:
-            mode = "dump1090"
+        receiver = config_data.get("receiver", {})
 
         yaml_config = {
             "crateName": crate_name,
@@ -69,16 +63,16 @@ class BootBoy:
             },
             "receiver": {
                 "antenna": receiver.get("antenna", "xxx"),
-                "mode": mode,
                 "receiverId": receiver.get("id", "xxx"),
                 "task": receiver.get("task", "xxx"),
                 "type": receiver.get("type", "xxx"),
             },
-            "freshDir": "/var/wombat/fresh/hyena",
+            "freshDir": "/var/wombat/fresh/heeler",
             "geoLoc": geo_loc,
+            "gpsEnable": False,
         }
 
-        if mode == "dump978":
+        if receiver["task"].endswith("dump978"):
             yaml_config["dump978Filename"] = "/tmp/aircraft.json"
         else:
             yaml_config["dump1090Url"] = "http://localhost:8080/data.json"
@@ -92,9 +86,7 @@ class BootBoy:
             print(f"Error writing config.yaml: {e}")
             sys.exit(1)
 
-        return {
-            "receiver_task": receiver.get("task", "xxx"),
-        }
+        return yaml_config
 
     def verify_service_active(self, service_name: str) -> None:
         import time
