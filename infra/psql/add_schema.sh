@@ -10,5 +10,9 @@ export PGHOST=localhost
 export PGPASSWORD=woofwoof
 export PGUSER=hyena_admin
 #
+psql < adsb_exchange.psql
+psql < daily_score.psql
+psql < geo_loc.psql
 psql < load_log.psql
+psql < observation.psql
 #

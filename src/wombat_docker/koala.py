@@ -15,13 +15,10 @@ logger = logging.getLogger("koala")
 class Koala:
 
     def __init__(self):      
-        # path from inside docker container
-        self.koala_dir = "/mnt/wombat/hyena/koala"
-        self.success_dir = "/mnt/wombat/hyena/success/"
-
-        # path for mac development
-        # self.koala_dir = "/var/wombat/hyena/koala"
-        # self.success_dir = "/var/wombat/hyena/success/"
+        self.koala_dir_adsb = os.environ.get("KOALA_DIR_ADSB", "/var/wombat/hyena/koala_adsb")
+        self.koala_dir_uat = os.environ.get("KOALA_DIR_UAT", "/var/wombat/hyena/koala_uat")        
+        self.success_dir_adsb = os.environ.get("SUCCESS_DIR_ADSB", "/var/wombat/hyena/success_adsb")
+        self.success_dir_uat = os.environ.get("SUCCESS_DIR_UAT", "/var/wombat/hyena/success_uat")
 
         # UID/GID are provided by container entrypoint; default keeps local behavior.
         self.wombat_uid = int(os.getenv("WOMBAT_UID", "1000"))
@@ -50,19 +47,15 @@ class Koala:
     def file_processor(self, file_name: str) -> dict[str, any]:
         if not self.file_reader(file_name):
             logger.warning(f"file read failed for {file_name}")
-            return
-        
-        epochSeconds = self.raw_buffer.get("timeStamp", {}).get("epochSeconds", 0)
-        project = self.raw_buffer.get("project", "unknown"),
-        project = "hyena-adsb"
-        
+            return {}
+
         result = {
-            "epochSeconds": epochSeconds,
+            "epochSeconds": self.raw_buffer.get("timeStamp", {}).get("epochSeconds", 0),
             "geoLoc": {
                 "site": self.raw_buffer.get("geoLoc", {}).get("siteName", "unknown")
             },
             "hostName": self.raw_buffer.get("equipment", {}).get("hostName", "unknown"),
-            "project": project,
+            "project": self.raw_buffer.get("job", {}).get("project", "unknown"),
             "version": self.raw_buffer.get("version", 0),
             "observation": self.raw_buffer.get("observations", []),
             "adsbex": self.raw_buffer.get("adsbex", []),
@@ -70,18 +63,18 @@ class Koala:
 
         return result
 
-    def execute(self) -> None:
-        logger.info("koala execute")
-        logger.info(f"success dir:{self.success_dir}")
+    def worker(self, koala_dir: str, success_dir: str) -> None:
+        logger.info(f"koala dir: {koala_dir} success dir:{success_dir}")
 
-        os.chdir(self.success_dir)
-        targets = os.listdir(".")
+        os.chdir(success_dir)
+        targets = [ff for ff in os.listdir(".") if ff.endswith(".json")]
         logger.info(f"{len(targets)} files noted")
 
         # koala only gets the most recent
         candidates = {}
+        max_list_size = 5
         for target in targets:
-            candidate = self.file_processor(target) 
+            candidate = self.file_processor(target)
             if len(candidate) > 0:
                 key = f"{candidate['epochSeconds']}.{candidate['hostName']}"
                 candidates[key] = candidate
@@ -91,12 +84,16 @@ class Koala:
             winner = candidates[key]
 
         if winner is None:
-            print("no winner")
+            logger.info("no winner found")
         else:
-            out_file_name = f"{self.koala_dir}/{winner['epochSeconds']}.{winner['hostName']}"
+            out_file_name = f"{koala_dir}/{winner['epochSeconds']}.{winner['hostName']}"
             self.file_writer(out_file_name, winner)
             os.chown(out_file_name, self.wombat_uid, self.wombat_gid)
 
+    def execute(self) -> None:
+        self.worker(self.koala_dir_adsb, self.success_dir_adsb)
+        self.worker(self.koala_dir_uat, self.success_dir_uat)
+      
 if __name__ == "__main__":
     koala = Koala()
     koala.execute()

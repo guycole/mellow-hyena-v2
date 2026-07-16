@@ -19,18 +19,16 @@ class Validator:
     def __init__(self, postgres: PostGres):
         self.postgres = postgres
 
-        # path from inside docker container
-        self.failure_dir = "/mnt/wombat/failure/"
-        self.fresh_dir = "/mnt/wombat/fresh/hyena"
-        self.success_dir = "/mnt/wombat/hyena/success/"
-
-        # path for mac development
-        # self.failure_dir = "/var/wombat/failure/"
-        # self.fresh_dir = "/var/wombat/fresh/hyena"
-        # self.success_dir = "/var/wombat/hyena/success/"
+        self.failure_dir = os.environ.get("FAILURE_DIR", "/var/wombat/failure")
+        self.fresh_dir = os.environ.get("FRESH_DIR", "/var/wombat/fresh/heeler")
+        self.success_dir_adsb = os.environ.get("SUCCESS_DIR_ADSB", "/var/wombat/hyena/success_adsb")
+        self.success_dir_uat = os.environ.get("SUCCESS_DIR_UAT", "/var/wombat/hyena/success_uat")
 
         self.failure = 0
-        self.success = 0
+        self.success_adsb = 0
+        self.success_uat = 0
+
+        self.adsb_flag = True
 
     def file_failure(self, file_name: str):
         logger.info(f"file failure:{file_name}")
@@ -41,8 +39,12 @@ class Validator:
     def file_success(self, file_name: str):
         #logger.info(f"file success:{file_name}")
 
-        self.success += 1
-        os.rename(file_name, self.success_dir + "/" + file_name)
+        if self.adsb_flag:
+            self.success_adsb += 1
+            os.rename(file_name, self.success_dir_adsb + "/" + file_name)
+        else:
+            self.success_uat += 1
+            os.rename(file_name, self.success_dir_uat + "/" + file_name)
 
     def file_reader(self, file_name: str) -> bool:
         try:
@@ -55,25 +57,60 @@ class Validator:
         return True
 
     def load_log_test(self, test_file_name: str) -> bool:
+        logger.info(f"load_log_test for file: {test_file_name}")
+
         try:
             candidate = self.postgres.load_log_select_by_file_name(test_file_name)
-            if candidate is not None:
-                logger.info(f"skippping already processed:{test_file_name}")
-                return False
-            else:
+            if candidate is None:
+                logger.info(f"processing new file:{test_file_name}")
+
+                geo_loc = self.postgres.geo_loc_select_by_site(self.raw_buffer["geoLoc"]["siteName"])
+                if len(geo_loc) == 0:
+                    logger.warning(
+                        "must insert geo_loc for site: %s",
+                        self.raw_buffer["geoLoc"]["siteName"],
+                    )
+                    return False
+
                 load_log = {
+                    "crate_name": self.raw_buffer["crateName"],
                     "epoch_seconds": self.raw_buffer["timeStamp"]["epochSeconds"],
                     "file_name": test_file_name,
+                    "geo_loc_id": geo_loc[0].id,
                     "host_name": self.raw_buffer["equipment"]["hostName"],
                     "load_time": datetime.datetime.now(),
-                    "mode": self.raw_buffer["mode"],
+                    "mode": self.raw_buffer["job"]["mode"],
                     "obs_quantity": len(self.raw_buffer["observations"]),
                     "obs_time": self.raw_buffer["timeStamp"]["iso8601"],
-                    "platform": self.raw_buffer["equipment"]["platform"],
-                    "project": self.raw_buffer["project"],
+                    "site_name": self.raw_buffer["geoLoc"]["siteName"],
+                    "task": self.raw_buffer["job"]["task"],
                 }
 
                 self.postgres.load_log_insert(load_log)
+
+                if self.raw_buffer["job"]["mode"] == "dump1090":
+                    self.adsb_flag = True
+                    quantity_adsb = len(self.raw_buffer["observations"])
+                    quantity_uat = 0
+                else:
+                    self.adsb_flag = False
+                    quantity_adsb = 0
+                    quantity_uat = len(self.raw_buffer["observations"])
+
+                daily_score = {
+                    "crate_name": self.raw_buffer["crateName"],
+                    "file_quantity": 1,
+                    "host_name": self.raw_buffer["equipment"]["hostName"],
+                    "quantity_adsb": quantity_adsb,
+                    "quantity_uat": quantity_uat,
+                    "score_date": datetime.date.fromisoformat(self.raw_buffer["timeStamp"]["iso8601"][:10]),
+                }
+
+                self.postgres.daily_score_insert_or_update(daily_score)
+
+                if len(self.raw_buffer["observations"]) < 1:
+                    logger.info("skipping file with no observations")
+                    return False
 
                 return True
         except Exception as error:
@@ -92,13 +129,18 @@ class Validator:
             self.file_failure(file_name)
             return
 
-        if self.raw_buffer["version"] == 1 and self.raw_buffer["project"].startswith("hyena"):
-            pass
-        else:
-            logger.warning(f"invalid version or project for {file_name}")
+        try:
+            if self.raw_buffer["version"] == 1 and self.raw_buffer["job"]["project"] == "hyena-v2":
+                pass
+            else:
+                logger.warning(f"invalid version or project for {file_name}")
+                self.file_failure(file_name)
+                return
+        except Exception as error:
+            logger.error(f"project/version failure for {file_name}: {error}")
             self.file_failure(file_name)
             return
-        
+
         if self.load_log_test(file_name):
             self.file_success(file_name)
         else:
@@ -113,10 +155,9 @@ class Validator:
         logger.info(f"{len(targets)} files noted")
 
         for target in targets:
-            logger.info(f"target:{target}")
             self.file_processor(target)
 
-        logger.info(f"validator success:{self.success} failure:{self.failure}")
+        logger.info(f"validator adsb success:{self.success_adsb} uat success:{self.success_uat} failure:{self.failure}")
 
 # ;;; Local Variables: ***
 # ;;; mode:python ***

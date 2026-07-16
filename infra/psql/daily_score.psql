@@ -1,0 +1,25 @@
+--
+-- Title: daily_score.psql
+-- Description: daily activity summary
+--
+-- crate_name is crateName (from json)
+-- file_quantity is total daily files
+-- host_name is from equipment.hostName
+-- quantity_adsb is total daily adsb observations
+-- quantity_adsb is total daily uat observations
+-- score_uat is summary date
+--
+create table hyena_daily_score (
+  id             bigserial    primary key,
+  crate_name     varchar(32)  not null,
+  file_quantity  integer      not null,
+  host_name      varchar(16)  not null,
+  quantity_adsb  integer      not null,
+  quantity_uat   integer      not null,
+  score_date     date         not null
+);
+
+grant select, insert, update, delete on hyena_daily_score to hyena_client;
+grant usage, select on sequence hyena_daily_score_id_seq to hyena_client;
+
+create unique index hyena_daily_score_ndx1 on hyena_daily_score(crate_name, host_name, score_date);

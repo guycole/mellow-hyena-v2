@@ -1,0 +1,39 @@
+--
+-- Title: observation.psql
+-- Description: dump1090 observation
+--
+-- adsb_hex = hex beacon id
+-- adsb_exchange_id = join w/adsb_exchange 
+-- altitude = reported altitude in feet
+-- bearing = calculated target bearing in degrees from north
+-- flight = airline assigned flight
+-- latitude = reported latitude
+-- longitude = reported longitude
+-- load_log_id = join w/load_log
+-- obs_time = observation time
+-- range = calculated distance from receiver in nautical miles
+-- speed = reported speed in knots
+-- track = reported heading in degrees from north
+-- 
+create table hyena_observation (
+  id                bigserial    primary key,
+  adsb_exchange_id  bigint       not null,
+  constraint        adsb_exchange_id  foreign key(adsb_exchange_id) references hyena_adsb_exchange(id),
+  adsb_hex          varchar(16)  not null,
+  altitude          int          not null,
+  bearing           real         not null default -1.0,
+  flight            varchar(32)  not null,
+  latitude          real         not null,
+  longitude         real         not null,
+  load_log_id       bigint       not null,
+  constraint        load_log_id  foreign key(load_log_id) references hyena_load_log(id),
+  obs_time          timestamp    not null,
+  range             real         not null default -1.0,
+  speed             smallint     not null,
+  track             smallint     not null
+);
+
+grant select, insert, update, delete on hyena_observation to hyena_client;
+grant usage, select on sequence hyena_observation_id_seq to hyena_client;
+
+create unique index hyena_obs_ndx1 on hyena_observation(adsb_hex, flight, obs_time, load_log_id);
