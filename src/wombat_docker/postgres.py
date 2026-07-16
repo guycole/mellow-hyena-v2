@@ -45,7 +45,7 @@ class PostGres:
                     select(DailyScore).filter(
                         and_(
                             DailyScore.score_date == candidate.score_date,
-                            DailyScore.platform == candidate.platform,
+                            DailyScore.host_name == candidate.host_name,
                         )
                     )
                 ).first()
