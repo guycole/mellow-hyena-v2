@@ -157,7 +157,7 @@ class Validator:
         for target in targets:
             self.file_processor(target)
 
-        logger.info(f"validator success:{self.success} failure:{self.failure}")
+        logger.info(f"validator adsb success:{self.success_adsb} uat success:{self.success_uat} failure:{self.failure}")
 
 # ;;; Local Variables: ***
 # ;;; mode:python ***
