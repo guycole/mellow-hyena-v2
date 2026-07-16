@@ -53,7 +53,10 @@ RUN printf '%s\n' '#!/bin/sh' 'set -e' '/usr/local/bin/collect-wombat-ids.sh' 's
 
 ENV FAILURE_DIR=/mnt/wombat/failure/
 ENV FRESH_DIR=/mnt/wombat/fresh/hyena
-ENV SUCCESS_DIR=/mnt/wombat/hyena/success/
+ENV KOALA_DIR_ADSB=/mnt/wombat/fresh/hyena
+ENV KOALA_DIR_UAT=/mnt/wombat/fresh/hyena
+ENV SUCCESS_DIR_ADSB=/mnt/wombat/hyena/success_adsb/
+ENV SUCCESS_DIR_UAT=/mnt/wombat/hyena/success_uat/
 
 ENV DB_CONN=postgresql+psycopg2://hyena_client:batabat@172.17.0.1:5432/hyena
 

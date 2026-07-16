@@ -21,10 +21,14 @@ class Validator:
 
         self.failure_dir = os.environ.get("FAILURE_DIR", "/var/wombat/failure")
         self.fresh_dir = os.environ.get("FRESH_DIR", "/var/wombat/fresh/heeler")
-        self.success_dir = os.environ.get("SUCCESS_DIR", "/var/wombat/heeler/success")
+        self.success_dir_adsb = os.environ.get("SUCCESS_DIR_ADSB", "/var/wombat/hyena/success_adsb")
+        self.success_dir_uat = os.environ.get("SUCCESS_DIR_UAT", "/var/wombat/hyena/success_uat")
 
         self.failure = 0
-        self.success = 0
+        self.success_adsb = 0
+        self.success_uat = 0
+
+        self.adsb_flag = True
 
     def file_failure(self, file_name: str):
         logger.info(f"file failure:{file_name}")
@@ -35,8 +39,12 @@ class Validator:
     def file_success(self, file_name: str):
         #logger.info(f"file success:{file_name}")
 
-        self.success += 1
-        os.rename(file_name, self.success_dir + "/" + file_name)
+        if self.adsb_flag:
+            self.success_adsb += 1
+            os.rename(file_name, self.success_dir_adsb + "/" + file_name)
+        else:
+            self.success_uat += 1
+            os.rename(file_name, self.success_dir_uat + "/" + file_name)
 
     def file_reader(self, file_name: str) -> bool:
         try:
@@ -81,9 +89,11 @@ class Validator:
                 self.postgres.load_log_insert(load_log)
 
                 if self.raw_buffer["job"]["mode"] == "dump1090":
+                    self.adsb_flag = True
                     quantity_adsb = len(self.raw_buffer["observations"])
                     quantity_uat = 0
                 else:
+                    self.adsb_flag = False
                     quantity_adsb = 0
                     quantity_uat = len(self.raw_buffer["observations"])
 
