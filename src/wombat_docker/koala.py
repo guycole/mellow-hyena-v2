@@ -91,7 +91,7 @@ class Koala:
             winner = candidates[key]
 
         if winner is None:
-            print("no winner")
+            logger.info("no winner")
         else:
             out_file_name = f"{self.koala_dir}/{winner['epochSeconds']}.{winner['hostName']}"
             self.file_writer(out_file_name, winner)

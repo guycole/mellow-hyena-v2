@@ -41,7 +41,7 @@ class HyenaApp:
             return
 
 if __name__ == "__main__":
-    # stunt_box options: "koala" and "validator"G
+    # stunt_box options: "koala" and "validator"
     stunt_box = os.environ.get("stuntbox", "validator")
 
     app = HyenaApp(stunt_box)

@@ -19,7 +19,7 @@ class Base(DeclarativeBase):
     pass
 
 class DailyScore(Base):
-    __tablename__ = "heeler_daily_score"
+    __tablename__ = "hyena_daily_score"
 
     id = Column(Integer, primary_key=True)
     crate_name = Column(String)
@@ -41,7 +41,7 @@ class DailyScore(Base):
         return f"daily_score({self.score_date} {self.host_name})"
 
 class GeoLoc(Base):
-    __tablename__ = "heeler_geo_loc"
+    __tablename__ = "hyena_geo_loc"
 
     id = Column(Integer, primary_key=True)
     altitude = Column(Float)

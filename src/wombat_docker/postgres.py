@@ -9,6 +9,7 @@
 # from sqlalchemy import select
 
 import datetime
+import logging
 import time
 
 from typing import List, Dict
@@ -21,8 +22,12 @@ from sqlalchemy import desc
 
 from sql_table import (
     DailyScore,
+    GeoLoc,
     LoadLog,
 )
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger("hyena")
 
 class PostGres:
     db_engine = None
@@ -48,14 +53,21 @@ class PostGres:
                 if existing is None:
                     session.add(candidate)
                 else:
-                    existing.file_quantity = candidate.file_quantity
-                    existing.obs_quantity = candidate.obs_quantity
+                    existing.file_quantity += candidate.file_quantity
+                    existing.quantity_adsb += candidate.quantity_adsb
+                    existing.quantity_uat += candidate.quantity_uat
 
                 session.commit()
         except Exception as error:
-            print(error)
+            logger.exception("daily_score_insert_or_update failed: %s", error)
 
         return candidate
+
+    def geo_loc_select_by_site(self, site_name: str) -> List[GeoLoc]:
+        statement = select(GeoLoc).filter_by(site_name=site_name).order_by(GeoLoc.fix_time)
+
+        with self.Session() as session:
+            return session.scalars(statement).all()
 
     def load_log_insert(self, args: dict[str, any]) -> LoadLog:
         candidate = LoadLog(args)
@@ -65,7 +77,7 @@ class PostGres:
                 session.add(candidate)
                 session.commit()
         except Exception as error:
-            print(error)
+            logger.exception("load_log_insert failed: %s", error)
 
         return candidate
 
@@ -88,7 +100,6 @@ class PostGres:
             return session.scalars(
                 select(LoadLog).filter_by(file_name=file_name)
             ).first()
-
 
 # ;;; Local Variables: ***
 # ;;; mode:python ***

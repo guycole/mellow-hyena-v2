@@ -49,25 +49,59 @@ class Validator:
         return True
 
     def load_log_test(self, test_file_name: str) -> bool:
+        logger.info(f"load_log_test for file: {test_file_name}")
+
         try:
             candidate = self.postgres.load_log_select_by_file_name(test_file_name)
-            if candidate is not None:
-                logger.info(f"skippping already processed:{test_file_name}")
-                return False
-            else:
+            if candidate is None:
+                logger.info(f"processing new file:{test_file_name}")
+
+                geo_loc = self.postgres.geo_loc_select_by_site(self.raw_buffer["geoLoc"]["siteName"])
+                if len(geo_loc) == 0:
+                    logger.warning(
+                        "must insert geo_loc for site: %s",
+                        self.raw_buffer["geoLoc"]["siteName"],
+                    )
+                    return False
+
                 load_log = {
+                    "crate_name": self.raw_buffer["crateName"],
                     "epoch_seconds": self.raw_buffer["timeStamp"]["epochSeconds"],
                     "file_name": test_file_name,
+                    "geo_loc_id": geo_loc[0].id,
                     "host_name": self.raw_buffer["equipment"]["hostName"],
                     "load_time": datetime.datetime.now(),
-                    "mode": self.raw_buffer["mode"],
-                    "obs_quantity": len(self.raw_buffer["observations"]),
+                    "mode": self.raw_buffer["job"]["mode"],
+
+                    #"obs_quantity": len(self.raw_buffer["observations"]),
                     "obs_time": self.raw_buffer["timeStamp"]["iso8601"],
-                    "platform": self.raw_buffer["equipment"]["platform"],
-                    "project": self.raw_buffer["project"],
+                    "site_name": self.raw_buffer["geoLoc"]["siteName"],
+                    "task": self.raw_buffer["job"]["task"],
                 }
 
                 self.postgres.load_log_insert(load_log)
+
+                if self.raw_buffer["job"]["mode"] == "dump1090":
+                    quantity_adsb = len(self.raw_buffer["observations"])
+                    quantity_uat = 0
+                else:
+                    quantity_adsb = 0
+                    quantity_uat = len(self.raw_buffer["observations"])
+
+                daily_score = {
+                    "crate_name": self.raw_buffer["crateName"],
+                    "file_quantity": 1,
+                    "host_name": self.raw_buffer["equipment"]["hostName"],
+                    "quantity_adsb": quantity_adsb,
+                    "quantity_uat": quantity_uat,
+                    "score_date": datetime.date.fromisoformat(self.raw_buffer["timeStamp"]["iso8601"][:10]),
+                }
+
+                self.postgres.daily_score_insert_or_update(daily_score)
+
+                if len(self.raw_buffer["observations"]) < 1:
+                    logger.info("skipping file with no observations")
+                    return False
 
                 return True
         except Exception as error:
@@ -86,7 +120,7 @@ class Validator:
             self.file_failure(file_name)
             return
 
-        if self.raw_buffer["version"] == 1 and self.raw_buffer["project"].startswith("hyena"):
+        if self.raw_buffer["version"] == 1 and self.raw_buffer["job"]["project"] == "hyena-v2":
             pass
         else:
             logger.warning(f"invalid version or project for {file_name}")
@@ -106,9 +140,8 @@ class Validator:
         targets = sorted(os.listdir("."))
         logger.info(f"{len(targets)} files noted")
 
-#        for target in targets:
-#            logger.info(f"target:{target}")
-#            self.file_processor(target)
+        for target in targets:
+            self.file_processor(target)
 
         logger.info(f"validator success:{self.success} failure:{self.failure}")
 
