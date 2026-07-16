@@ -120,13 +120,18 @@ class Validator:
             self.file_failure(file_name)
             return
 
-        if self.raw_buffer["version"] == 1 and self.raw_buffer["job"]["project"] == "hyena-v2":
-            pass
-        else:
-            logger.warning(f"invalid version or project for {file_name}")
+        try:
+            if self.raw_buffer["version"] == 1 and self.raw_buffer["job"]["project"] == "hyena-v2":
+                pass
+            else:
+                logger.warning(f"invalid version or project for {file_name}")
+                self.file_failure(file_name)
+                return
+        except Exception as error:
+            logger.error(f"project/version failure for {file_name}: {error}")
             self.file_failure(file_name)
             return
-        
+
         if self.load_log_test(file_name):
             self.file_success(file_name)
         else:
