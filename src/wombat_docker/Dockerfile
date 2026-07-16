@@ -44,7 +44,6 @@ RUN $VIRTUAL_ENV/bin/pip install --no-cache-dir -r requirements.txt
 COPY koala.py ./
 COPY hyena_app.py ./
 COPY postgres.py ./
-COPY scorer.py ./
 COPY sql_table.py ./
 COPY validator.py ./
 
