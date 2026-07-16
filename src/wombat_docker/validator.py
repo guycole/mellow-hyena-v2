@@ -72,8 +72,7 @@ class Validator:
                     "host_name": self.raw_buffer["equipment"]["hostName"],
                     "load_time": datetime.datetime.now(),
                     "mode": self.raw_buffer["job"]["mode"],
-
-                    #"obs_quantity": len(self.raw_buffer["observations"]),
+                    "obs_quantity": len(self.raw_buffer["observations"]),
                     "obs_time": self.raw_buffer["timeStamp"]["iso8601"],
                     "site_name": self.raw_buffer["geoLoc"]["siteName"],
                     "task": self.raw_buffer["job"]["task"],
