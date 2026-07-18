@@ -12,7 +12,7 @@ import os
 from postgres import PostGres
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-logger = logging.getLogger("hyena")
+logger = logging.getLogger("validator")
 
 class Validator:
 
