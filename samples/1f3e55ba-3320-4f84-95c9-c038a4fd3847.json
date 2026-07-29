@@ -1,0 +1,65 @@
+{
+    "equipment": {
+        "antenna": "whip",
+        "receiverId": 2,
+        "receiverType": "ac-1300",
+        "hostName": "pi3b",
+        "hostType": "rpi3"
+    },
+    "geoLoc": {
+        "altitude": 0,
+        "latitude": 38.108,
+        "longitude": -122.268,
+        "siteName": "development"
+    },
+    "job": {
+        "mode": "iwlist",
+        "project": "heeler-v2",
+        "task": "heeler-v2-iwlist"
+    },
+    "timeStamp": {
+        "epochSeconds": 1784402415,
+        "iso8601": "2026-07-18T19:20:15+00:00"
+    },
+    "crateName": "wombat04",
+    "fileName": "fe1e8800-97f6-43fe-b601-cbc15b4ddb93.json",
+    "version": 1,
+    "observations": [
+        {
+            "hex": "a17c65",
+            "flight": "SKW3396",
+            "latitude": "40.038602",
+            "longitude": "-121.994809",
+            "altitude": "34000",
+            "track": "0",
+            "speed": "519"
+        },
+        {
+            "hex": "aa3c0b",
+            "flight": "CFS7255",
+            "latitude": "40.455431",
+            "longitude": "-122.29556",
+            "altitude": "3300",
+            "track": "181",
+            "speed": "125"
+        },
+        {
+            "hex": "a06ded",
+            "flight": "REH95",
+            "latitude": "40.37997",
+            "longitude": "-122.301989",
+            "altitude": "3150",
+            "track": "213",
+            "speed": "85"
+        },
+        {
+            "hex": "a5d9e0",
+            "flight": "N4761A",
+            "latitude": "40.251572",
+            "longitude": "-122.163208",
+            "altitude": "7650",
+            "track": "158",
+            "speed": "151"
+        }
+    ]
+}
