@@ -113,18 +113,20 @@ class Validator:
         return False
 
     def file_processor(self, file_name: str) -> None:
+        logger.info(f"processing file: {file_name}")
+
         if os.path.isfile(file_name) is False:
             logger.warning(f"skipping non-file:{file_name}")
             self.file_failure(file_name)
             return
 
-        if not self.file_reader(file_name):
+        if not self.jh.json_file_reader(file_name):
             logger.warning(f"file read failed for {file_name}")
             self.file_failure(file_name)
             return
 
         try:
-            if self.raw_buffer["version"] == 1 and self.raw_buffer["job"]["project"] == "hyena-v2":
+            if self.jh.raw_json["version"] == 1 and self.jh.raw_json["job"]["project"] == "hyena-v2":
                 pass
             else:
                 logger.warning(f"invalid version or project for {file_name}")
