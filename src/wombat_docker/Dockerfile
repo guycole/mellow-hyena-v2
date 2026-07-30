@@ -43,6 +43,7 @@ RUN $VIRTUAL_ENV/bin/pip install --no-cache-dir -r requirements.txt
 
 COPY wombat_docker/koala.py ./
 COPY wombat_docker/hyena_app.py ./
+COPY helper/json_helper.py ./
 COPY helper/postgres.py ./
 COPY helper/sql_table.py ./
 COPY wombat_docker/validator.py ./
