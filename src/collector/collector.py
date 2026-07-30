@@ -16,6 +16,8 @@ from typing import Any
 import uuid
 import zoneinfo
 
+from helper.json_helper import JsonHelper
+
 import yaml
 from yaml.loader import SafeLoader
 
@@ -116,13 +118,6 @@ class Collector:
             results.append(temp)
 
         return results
-    
-    def json_file_writer(self, file_name: str, json_data: dict[str, Any]) -> None:
-        try:
-            with open(file_name, "w") as out_file:
-                json.dump(json_data, out_file, indent=4)
-        except Exception as error:
-            logger.exception("json write error for %s: %s", file_name, error)
 
     def execute(self, adsbex_key: str | None) -> None:
         logger.info("collector execute: %s", self.receiver_task)
@@ -186,7 +181,7 @@ class Collector:
             "observations": observations,
         }
 
-        self.json_file_writer(outfile_json, results)
+        JsonHelper().json_file_writer(outfile_json, results)
 
 #
 # argv[1] = configuration filename

@@ -12,6 +12,7 @@ hostname=$(hostname)
 logger -p local3.info "collector hyena $hostname"
 #
 WORK_DIR="$HOME/github/mellow-hyena-v2/src/collector"
+PYTHONPATH="$HOME/github/mellow-hyena-v2/src"; export PYTHONPATH
 # 
 echo "start collection"
 sleep 13

@@ -1,0 +1,44 @@
+{
+    "geoLoc": {
+        "altitude": 0,
+        "latitude": 38.108,
+        "longitude": -122.268,
+        "site": "development"
+    },
+    "epochSeconds": 1778635179,
+    "fileName": "5232056c-6cd1-4bf8-9cae-2933800cde51.json",
+    "iso8601": "2026-05-13T01:19:39+00:00",
+    "mode": "dump1090",
+    "platform": "pi4k",
+    "project": "hyena-v2",
+    "version": 1,
+    "observations": [
+        {
+            "hex": "aa3c0b",
+            "flight": "CFS7255",
+            "latitude": "40.467911",
+            "longitude": "-122.295349",
+            "altitude": "2775",
+            "track": "181",
+            "speed": "123"
+        },
+        {
+            "hex": "a06ded",
+            "flight": "REH95",
+            "latitude": "40.387482",
+            "longitude": "-122.297119",
+            "altitude": "3125",
+            "track": "200",
+            "speed": "81"
+        },
+        {
+            "hex": "a5d9e0",
+            "flight": "N4761A",
+            "latitude": "40.26622",
+            "longitude": "-122.170654",
+            "altitude": "7650",
+            "track": "158",
+            "speed": "150"
+        }
+    ]
+}

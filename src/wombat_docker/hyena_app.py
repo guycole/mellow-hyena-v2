@@ -12,7 +12,8 @@ from sqlalchemy.orm import sessionmaker
 
 from koala import Koala
 from validator import Validator
-from postgres import PostGres
+
+from helper.postgres import PostGres
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("hyena")
