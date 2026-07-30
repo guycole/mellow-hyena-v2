@@ -9,7 +9,9 @@ import datetime
 import json
 import os
 
-from postgres import PostGres
+from helper.json_helper import JsonHelper, schema
+
+from helper.postgres import PostGres
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("validator")
@@ -30,6 +32,8 @@ class Validator:
 
         self.adsb_flag = True
 
+        self.jh = JsonHelper()
+
     def file_failure(self, file_name: str):
         logger.info(f"file failure:{file_name}")
 
@@ -46,16 +50,6 @@ class Validator:
             self.success_uat += 1
             os.rename(file_name, self.success_dir_uat + "/" + file_name)
 
-    def file_reader(self, file_name: str) -> bool:
-        try:
-            with open(file_name, "r", encoding="utf-8") as in_file:
-                self.raw_buffer = json.load(in_file)
-        except Exception as error:
-            logger.error(f"file read failed for {file_name}: {error}")
-            return False
-
-        return True
-
     def load_log_test(self, test_file_name: str) -> bool:
         logger.info(f"load_log_test for file: {test_file_name}")
 
@@ -68,47 +62,47 @@ class Validator:
                 if len(geo_loc) == 0:
                     logger.warning(
                         "must insert geo_loc for site: %s",
-                        self.raw_buffer["geoLoc"]["siteName"],
+                        self.jh.raw_json["geoLoc"]["siteName"],
                     )
                     return False
 
                 load_log = {
-                    "crate_name": self.raw_buffer["crateName"],
-                    "epoch_seconds": self.raw_buffer["timeStamp"]["epochSeconds"],
+                    "crate_name": self.jh.raw_json["crateName"],
+                    "epoch_seconds": self.jh.raw_json["timeStamp"]["epochSeconds"],
                     "file_name": test_file_name,
                     "geo_loc_id": geo_loc[0].id,
-                    "host_name": self.raw_buffer["equipment"]["hostName"],
+                    "host_name": self.jh.raw_json["equipment"]["hostName"],
                     "load_time": datetime.datetime.now(),
-                    "mode": self.raw_buffer["job"]["mode"],
-                    "obs_quantity": len(self.raw_buffer["observations"]),
-                    "obs_time": self.raw_buffer["timeStamp"]["iso8601"],
-                    "site_name": self.raw_buffer["geoLoc"]["siteName"],
-                    "task": self.raw_buffer["job"]["task"],
+                    "mode": self.jh.raw_json["job"]["mode"],
+                    "obs_quantity": len(self.jh.raw_json["observations"]),
+                    "obs_time": self.jh.raw_json["timeStamp"]["iso8601"],
+                    "site_name": self.jh.raw_json["geoLoc"]["siteName"],
+                    "task": self.jh.raw_json["job"]["task"],
                 }
 
                 self.postgres.load_log_insert(load_log)
 
-                if self.raw_buffer["job"]["mode"] == "dump1090":
+                if self.jh.raw_json["job"]["mode"] == "dump1090":
                     self.adsb_flag = True
-                    quantity_adsb = len(self.raw_buffer["observations"])
+                    quantity_adsb = len(self.jh.raw_json["observations"])
                     quantity_uat = 0
                 else:
                     self.adsb_flag = False
                     quantity_adsb = 0
-                    quantity_uat = len(self.raw_buffer["observations"])
+                    quantity_uat = len(self.jh.raw_json["observations"])
 
                 daily_score = {
-                    "crate_name": self.raw_buffer["crateName"],
+                    "crate_name": self.jh.raw_json["crateName"],
                     "file_quantity": 1,
-                    "host_name": self.raw_buffer["equipment"]["hostName"],
+                    "host_name": self.jh.raw_json["equipment"]["hostName"],
                     "quantity_adsb": quantity_adsb,
                     "quantity_uat": quantity_uat,
-                    "score_date": datetime.date.fromisoformat(self.raw_buffer["timeStamp"]["iso8601"][:10]),
+                    "score_date": datetime.date.fromisoformat(self.jh.raw_json["timeStamp"]["iso8601"][:10]),
                 }
 
                 self.postgres.daily_score_insert_or_update(daily_score)
 
-                if len(self.raw_buffer["observations"]) < 1:
+                if len(self.jh.raw_json["observations"]) < 1:
                     logger.info("skipping file with no observations")
                     return False
 
