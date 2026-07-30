@@ -58,7 +58,7 @@ class Validator:
             if candidate is None:
                 logger.info(f"processing new file:{test_file_name}")
 
-                geo_loc = self.postgres.geo_loc_select_by_site(self.raw_buffer["geoLoc"]["siteName"])
+                geo_loc = self.postgres.geo_loc_select_by_site(self.jh.raw_json["geoLoc"]["siteName"])
                 if len(geo_loc) == 0:
                     logger.warning(
                         "must insert geo_loc for site: %s",
