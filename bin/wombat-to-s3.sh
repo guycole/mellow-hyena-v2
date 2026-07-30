@@ -19,11 +19,14 @@ DEST_BUCKET=s3://mellow-hyena-uw2-t8833.braingang.net/fresh/
 echo "start s3 copy"
 cd "${WORK_DIR}/${EXPORT_DIR}" || exit 1
 
-if aws s3 cp . "$DEST_BUCKET" --profile="$HOST_NAME"; then
-	mv -- * "../${ARCHIVE_DIR}/"
-else
-	echo "s3 copy failed" >&2
-	exit 1
-fi
+for file in *; do
+	[ -f "$file" ] || continue
+	if aws s3 cp "$file" "${DEST_BUCKET}${file}" --profile="$HOST_NAME"; then
+		mv -- "$file" "../${ARCHIVE_DIR}/"
+	else
+		echo "s3 copy failed for $file" >&2
+		exit 1
+	fi
+done
 
 echo "end s3 copy"
