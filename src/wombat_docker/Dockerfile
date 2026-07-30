@@ -1,5 +1,5 @@
 #
-# docker build -t hyena:latest .
+# docker build -t hyena:latest -f src/wombat_docker/Dockerfile src/
 # docker run -v /var/wombat:/mnt/wombat --name hyena hyena:latest
 # docker run -e stuntbox=validate -v /var/wombat:/mnt/wombat --name hyena hyena:latest
 # docker run -e stuntbox=score -e limit=5 --name hyena hyena:latest
@@ -38,14 +38,14 @@ ENV VIRTUAL_ENV=/app/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # Copy requirements and install them inside the venv
-COPY requirements.txt ./
+COPY wombat_docker/requirements.txt ./
 RUN $VIRTUAL_ENV/bin/pip install --no-cache-dir -r requirements.txt
 
-COPY koala.py ./
-COPY hyena_app.py ./
-COPY postgres.py ./
-COPY sql_table.py ./
-COPY validator.py ./
+COPY wombat_docker/koala.py ./
+COPY wombat_docker/hyena_app.py ./
+COPY helper/postgres.py ./
+COPY helper/sql_table.py ./
+COPY wombat_docker/validator.py ./
 
 RUN printf '%s\n' '#!/bin/sh' 'set -e' '/usr/local/bin/collect-wombat-ids.sh' 'set -a' '[ -f /app/wombat_env.env ] && . /app/wombat_env.env' 'set +a' 'exec "$@"' > /usr/local/bin/docker-entrypoint.sh \
 	&& chmod +x /usr/local/bin/docker-entrypoint.sh
