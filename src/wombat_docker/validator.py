@@ -120,7 +120,7 @@ class Validator:
             self.file_failure(file_name)
             return
 
-        if not self.jh.json_file_reader(file_name):
+        if not self.jh.json_file_reader(file_name, True):
             logger.warning(f"file read failed for {file_name}")
             self.file_failure(file_name)
             return
