@@ -82,6 +82,7 @@ class Collector:
 
             temp = {
                 "hex": element.get("hex", "unknown").strip(),
+                "flight": element.get("flight", "unknown").strip(),
                 "latitude": str(element.get("lat", 0.0)).strip(),
                 "longitude": str(element.get("lon", 0.0)).strip(),
                 "altitude": str(element.get("altitude", 0)).strip(),

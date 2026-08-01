@@ -125,6 +125,11 @@ class Validator:
             self.file_failure(file_name)
             return
 
+        if os.path.getsize(file_name) < 1:
+            logger.warning(f"skipping empty file:{file_name}")
+            self.file_failure(file_name)
+            return
+
         try:
             if self.jh.raw_json["version"] == 1 and self.jh.raw_json["job"]["project"] == "hyena-v2":
                 pass
