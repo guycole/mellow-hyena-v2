@@ -17,8 +17,9 @@ COPY peccary_docker/requirements.txt ./
 RUN $VIRTUAL_ENV/bin/pip install --no-cache-dir -r requirements.txt
 
 COPY helper/ ./helper/
-COPY peccary_docker/hyena_app.py ./
-COPY peccary_docker/loader.py ./
+COPY wombat_docker/hyena_app.py ./
+COPY wombat_docker/koala.py ./
+COPY wombat_docker/validator.py ./
 
 RUN printf '%s\n' '#!/bin/sh' 'set -eu' \
 	': "${WOMBAT_UID:?WOMBAT_UID is required}"' \
