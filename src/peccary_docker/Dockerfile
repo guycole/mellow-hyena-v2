@@ -1,6 +1,7 @@
 #
 # Build from the src/ directory (one level above this file):
 # docker build -f peccary_docker/Dockerfile -t peccary:latest .
+# docker build -t hyena:latest -f src/wombat_docker/Dockerfile src/
 # docker run -e WOMBAT_UID=<uid> -e WOMBAT_GID=<gid> -v /var/peccary:/mnt/peccary --name peccary peccary:latest
 #
 FROM python:3.11-slim

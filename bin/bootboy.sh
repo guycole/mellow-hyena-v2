@@ -10,7 +10,7 @@ PATH=/bin:/usr/bin:/etc:/usr/local/bin; export PATH
 hostname=$(hostname)
 logger -p local3.info "bootboy hyena $hostname"
 #
-WORK_DIR="$HOME/github/mellow-hyena-v2/src/collector"
+WORK_DIR="/home/wombat/github/mellow-hyena-v2/src/collector"
 #
 echo "start bootboy"
 cd $WORK_DIR
