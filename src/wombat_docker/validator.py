@@ -67,6 +67,7 @@ class Validator:
                     return False
 
                 load_log = {
+                    "adsbex_quantity": len(self.jh.raw_json["adsbex"]),
                     "crate_name": self.jh.raw_json["crateName"],
                     "epoch_seconds": self.jh.raw_json["timeStamp"]["epochSeconds"],
                     "file_name": test_file_name,
@@ -120,13 +121,18 @@ class Validator:
             self.file_failure(file_name)
             return
 
-        if not self.jh.json_file_reader(file_name, True):
-            logger.warning(f"file read failed for {file_name}")
+        if os.path.getsize(file_name) < 1:
+            logger.warning(f"skipping empty file:{file_name}")
             self.file_failure(file_name)
             return
 
-        if os.path.getsize(file_name) < 1:
-            logger.warning(f"skipping empty file:{file_name}")
+        if not file_name.endswith(".json"):
+            logger.warning(f"skipping non-json:{file_name}")
+            self.file_failure(file_name)
+            return
+
+        if not self.jh.json_file_reader(file_name, True):
+            logger.warning(f"file read failed for {file_name}")
             self.file_failure(file_name)
             return
 

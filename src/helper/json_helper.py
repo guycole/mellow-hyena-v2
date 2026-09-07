@@ -119,7 +119,9 @@ class JsonHelper:
             try:
                 validate(instance=self.raw_json, schema=schema)
             except Exception as error:
-                logger.error(f"json validation failed for {file_name}: {error}")
+                # error.json_path pinpoints which array/object entry actually failed
+                path = getattr(error, "json_path", None) or str(getattr(error, "absolute_path", ""))
+                logger.error(f"json validation failed for {file_name}: {error.message} at {path}")
                 return False
 
         return True
@@ -128,7 +130,8 @@ class JsonHelper:
         try:
             validate(instance=json_data, schema=schema)
         except Exception as error:
-            logger.error(f"json validation failed for {file_name}: {error.message}")
+            path = getattr(error, "json_path", None) or str(getattr(error, "absolute_path", ""))
+            logger.error(f"json validation failed for {file_name}: {error.message} at {path}")
             return False
 
         try:

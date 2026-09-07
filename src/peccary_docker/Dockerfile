@@ -22,13 +22,6 @@ COPY wombat_docker/hyena_app.py ./
 COPY wombat_docker/koala.py ./
 COPY wombat_docker/validator.py ./
 
-RUN printf '%s\n' '#!/bin/sh' 'set -eu' \
-	': "${WOMBAT_UID:?WOMBAT_UID is required}"' \
-	': "${WOMBAT_GID:?WOMBAT_GID is required}"' \
-	'exec "$@"' > /usr/local/bin/docker-entrypoint.sh \
-	&& chmod +x /usr/local/bin/docker-entrypoint.sh
-
-ENV FAILURE_DIR=/mnt/peccary/hyena/failure
 ENV FRESH_DIR=/mnt/peccary/hyena/hyena-v2
 
 # On Linux (production): override with -e DB_CONN=...@172.17.0.1:5432/hyena
