@@ -18,6 +18,33 @@ mapper_registry = registry()
 class Base(DeclarativeBase):
     pass
 
+class AdsbExchange(Base):
+    __tablename__ = "hyena_adsb_exchange"
+
+    id = Column(Integer, primary_key=True)
+    adsb_hex = Column(String(16))
+    category = Column(String(4))
+    emergency = Column(String(8))
+    flight = Column(String(32))
+    model = Column(String(32))
+    registration = Column(String(16))
+    ladd_flag = Column(Boolean)
+    military_flag = Column(Boolean)
+    pia_flag = Column(Boolean)
+    wierdo_flag = Column(Boolean)
+
+    def __init__(self, args: dict[str, any]):
+        self.adsb_hex = args["adsb_hex"]
+        self.category = args["category"]
+        self.emergency = args["emergency"]
+        self.flight = args["flight"]
+        self.model = args["model"]
+        self.registration = args["registration"]
+        self.ladd_flag = args["ladd_flag"]
+        self.military_flag = args["military_flag"]
+        self.pia_flag = args["pia_flag"]
+        self.wierdo_flag = args["wierdo_flag"]
+
 class DailyScore(Base):
     __tablename__ = "hyena_daily_score"
 
@@ -72,6 +99,7 @@ class LoadLog(Base):
     __tablename__ = "hyena_load_log"
 
     id = Column(Integer, primary_key=True)
+    adsbex_quantity = Column(Integer)
     crate_name = Column(String)
     epoch_seconds = Column(BigInteger)
     file_name = Column(String)
@@ -85,6 +113,7 @@ class LoadLog(Base):
     task = Column(String)
 
     def __init__(self, args: dict[str, any]):
+        self.adsbex_quantity = args["adsbex_quantity"]
         self.crate_name = args["crate_name"]
         self.epoch_seconds = args["epoch_seconds"]
         self.file_name = args["file_name"]
@@ -99,6 +128,40 @@ class LoadLog(Base):
 
     def __repr__(self):
         return f"load_log({self.file_name} {self.obs_time} {self.task} {self.host_name})"
+
+class Observation(Base):
+    __tablename__ = "hyena_observation"
+
+    id = Column(Integer, primary_key=True)
+    adsb_exchange_id = Column(BigInteger)
+    adsb_hex = Column(String(16))
+    altitude = Column(Integer)
+    bearing = Column(Float, default=-1.0)
+    flight = Column(String(32))
+    latitude = Column(Float)
+    longitude = Column(Float)
+    load_log_id = Column(BigInteger)
+    obs_time = Column(DateTime)
+    range = Column(Float, default=-1.0)
+    speed = Column(Integer)
+    track = Column(Integer)
+
+    def __init__(self, args: dict[str, any]):
+        self.adsb_exchange_id = args["adsb_exchange_id"]
+        self.adsb_hex = args["adsb_hex"]
+        self.altitude = args["altitude"]
+        self.bearing = args["bearing"]
+        self.flight = args["flight"]
+        self.latitude = args["latitude"]
+        self.longitude = args["longitude"]
+        self.load_log_id = args["load_log_id"]
+        self.obs_time = args["obs_time"]
+        self.range = args["range"]
+        self.speed = args["speed"]
+        self.track = args["track"]
+
+    def __repr__(self):
+        return f"observation({self.obs_time} {self.flight} {self.adsb_hex})"
 
 # ;;; Local Variables: ***
 # ;;; mode:python ***

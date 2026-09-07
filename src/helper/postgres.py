@@ -21,9 +21,11 @@ from sqlalchemy import select
 from sqlalchemy import desc
 
 from helper.sql_table import (
+    AdsbExchange,
     DailyScore,
     GeoLoc,
     LoadLog,
+    Observation,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -35,6 +37,40 @@ class PostGres:
 
     def __init__(self, session: sqlalchemy.orm.session.sessionmaker):
         self.Session = session
+
+    def adsb_exchange_insert(self, args: dict[str, any]) -> AdsbExchange:
+        candidate = AdsbExchange(args)
+
+        try:
+            with self.Session() as session:
+                session.add(candidate)
+                session.commit()
+        except Exception as error:
+            print(error)
+
+        return candidate
+
+    def adsb_exchange_select_or_insert(self, args: dict[str, any]) -> AdsbExchange:
+        statement = select(AdsbExchange).filter_by(
+            adsb_hex=args["adsb_hex"],
+            category=args["category"],
+            emergency=args["emergency"],
+            flight=args["flight"],
+            model=args["model"],
+            registration=args["registration"],
+            ladd_flag=args["ladd_flag"],
+            military_flag=args["military_flag"],
+            pia_flag=args["pia_flag"],
+            wierdo_flag=args["wierdo_flag"],
+        )
+
+        with self.Session() as session:
+            candidate = session.scalars(statement).first()
+
+        if candidate is None:
+            return self.adsb_exchange_insert(args)
+        else:
+            return candidate
 
     def daily_score_insert_or_update(self, args: dict[str, any]) -> DailyScore:
         candidate = DailyScore(args)
@@ -100,6 +136,18 @@ class PostGres:
             return session.scalars(
                 select(LoadLog).filter_by(file_name=file_name)
             ).first()
+
+    def observation_insert(self, args: dict[str, any]) -> Observation:
+        candidate = Observation(args)
+
+        try:
+            with self.Session() as session:
+                session.add(candidate)
+                session.commit()
+        except Exception as error:
+            logger.exception("observation_insert failed: %s", error)
+
+        return candidate
 
 # ;;; Local Variables: ***
 # ;;; mode:python ***

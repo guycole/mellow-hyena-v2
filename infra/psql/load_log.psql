@@ -2,6 +2,7 @@
 -- Title: load_log.psql
 -- Description: file load history
 --
+-- adsbex_quantity is population of adsbex responses in file
 -- crate_name is crateName (from json)
 -- epoch_seconds is from timeStamp.epochSeconds
 -- file_name is fileName (from json)
@@ -15,19 +16,20 @@
 -- task from receiver.task
 --
 create table hyena_load_log (
-  id             bigserial    primary key,
-  crate_name     varchar(32)  not null,
-  epoch_seconds  bigint       not null,
-  file_name      varchar(48)  unique not null,
-  geo_loc_id     bigint       not null,
-  constraint     geo_loc_id   foreign key(geo_loc_id) references hyena_geo_loc(id),
-  host_name      varchar(16)  not null,
-  load_time      timestamp    not null default CURRENT_TIMESTAMP,
-  mode           varchar(32)  not null,
-  obs_quantity   smallint     not null,
-  obs_time       timestamp    not null,
-  site_name      varchar(32)  not null,
-  task           varchar(32)  not null
+  id               bigserial    primary key,
+  adsbex_quantity  smallint     not null,
+  crate_name       varchar(32)  not null,
+  epoch_seconds    bigint       not null,
+  file_name        varchar(48)  unique not null,
+  geo_loc_id       bigint       not null,
+  constraint       geo_loc_id   foreign key(geo_loc_id) references hyena_geo_loc(id),
+  host_name        varchar(16)  not null,
+  load_time        timestamp    not null default CURRENT_TIMESTAMP,
+  mode             varchar(32)  not null,
+  obs_quantity     smallint     not null,
+  obs_time         timestamp    not null,
+  site_name        varchar(32)  not null,
+  task             varchar(32)  not null
 );
 
 grant select, insert, update, delete on hyena_load_log to hyena_client;

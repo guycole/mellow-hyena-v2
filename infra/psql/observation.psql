@@ -29,8 +29,8 @@ create table hyena_observation (
   constraint        load_log_id  foreign key(load_log_id) references hyena_load_log(id),
   obs_time          timestamp    not null,
   range             real         not null default -1.0,
-  speed             smallint     not null,
-  track             smallint     not null
+  speed             int          not null,
+  track             int          not null
 );
 
 grant select, insert, update, delete on hyena_observation to hyena_client;

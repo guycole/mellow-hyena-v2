@@ -35,7 +35,7 @@ class BootBoy:
         stderr = proc.stderr.strip()
         return proc.returncode, stderr
 
-    def configuration(self, target: str) -> dict[str, any]:
+    def configuration(self, target: str) -> str:
         print(f"BootBoy: configuring {target}")
 
         # Build the path to the admin JSON file
@@ -86,7 +86,7 @@ class BootBoy:
             print(f"Error writing config.yaml: {e}")
             sys.exit(1)
 
-        return yaml_config
+        return receiver.get("task", "xxx")
 
     def verify_service_active(self, service_name: str) -> None:
         import time
@@ -154,10 +154,10 @@ class BootBoy:
             print(f"Error updating wombat crontab: {e}")
 
     def execute(self, target: str) -> None:
-        config = self.configuration(target)
+        task = self.configuration(target)
         self.crontab()
-        self.manage_dump1090(config["receiver"]["task"])
-        self.manage_dump978(config["receiver"]["task"])
+        self.manage_dump1090(task)
+        self.manage_dump978(task)
 
 #
 if __name__ == "__main__":
