@@ -126,7 +126,7 @@ class HyenaValidator(Validator):
                 "file_name": test_file_name,
                 "geo_loc_id": geo_loc[0].id,
                 "host_name": raw_buffer["equipment"]["hostName"],
-                "load_time": datetime.datetime.now(datetime.UTC),
+                "load_time": datetime.datetime.now(datetime.timezone.utc),
                 "mode": raw_buffer["job"]["mode"],
                 "obs_quantity": len(raw_buffer["observations"]),
                 "obs_time": raw_buffer["timeStamp"]["iso8601"],
