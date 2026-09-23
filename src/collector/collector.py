@@ -316,6 +316,11 @@ if __name__ == "__main__":
         file_name = "config.yaml"
 
     adsbex_key = None
+    try:
+        with open("adsbex.key", "r", encoding="utf-8") as key_file:
+            adsbex_key = key_file.read().strip() or None
+    except OSError:
+        adsbex_key = None
 
     with open(file_name, "r", encoding="utf-8") as in_file:
         try:
