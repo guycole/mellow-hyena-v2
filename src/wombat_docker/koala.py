@@ -4,8 +4,8 @@
 # Development Environment: Ubuntu 22.04.5 LTS/python 3.10.12
 # Author: G.S. Cole (guycole at gmail dot com)
 #
-import logging
 import json
+import logging
 import os
 from typing import Any
 
@@ -14,22 +14,31 @@ logger = logging.getLogger("koala")
 
 
 class Koala:
-
     def __init__(self):
-        self.koala_dir_adsb = os.environ.get("KOALA_DIR_ADSB", "/var/wombat/hyena/koala_adsb")
-        self.koala_dir_uat = os.environ.get("KOALA_DIR_UAT", "/var/wombat/hyena/koala_uat")
-        self.success_dir_adsb = os.environ.get("SUCCESS_DIR_ADSB", "/var/wombat/hyena/success_adsb")
-        self.success_dir_uat = os.environ.get("SUCCESS_DIR_UAT", "/var/wombat/hyena/success_uat")
+        self.koala_dir_adsb = os.environ.get(
+            "KOALA_DIR_ADSB", "/var/wombat/hyena/koala_adsb"
+        )
+        self.koala_dir_uat = os.environ.get(
+            "KOALA_DIR_UAT", "/var/wombat/hyena/koala_uat"
+        )
+        self.success_dir_adsb = os.environ.get(
+            "SUCCESS_DIR_ADSB", "/var/wombat/hyena/success_adsb"
+        )
+        self.success_dir_uat = os.environ.get(
+            "SUCCESS_DIR_UAT", "/var/wombat/hyena/success_uat"
+        )
 
         # UID/GID are provided by container entrypoint; default keeps local behavior.
         self.wombat_uid = int(os.getenv("WOMBAT_UID", "1000"))
         self.wombat_gid = int(os.getenv("WOMBAT_GID", "1000"))
 
+        self.raw_buffer: dict[str, Any] = {}
+
     def file_reader(self, file_name: str) -> bool:
         try:
             with open(file_name, "r", encoding="utf-8") as in_file:
                 self.raw_buffer = json.load(in_file)
-        except Exception as error:
+        except (OSError, json.JSONDecodeError, TypeError) as error:
             logger.error("file read failed for %s: %s", file_name, error)
             return False
 
@@ -40,7 +49,7 @@ class Koala:
             with open(file_name, "w", encoding="utf-8") as out_file:
                 json.dump(content, out_file, indent=4)
                 out_file.write("\n")
-        except Exception as error:
+        except (OSError, TypeError, ValueError) as error:
             logger.error("file write failed for %s: %s", file_name, error)
             return False
 
@@ -95,13 +104,17 @@ class Koala:
             out_file_name = os.path.join(
                 koala_dir, f"{winner['epochSeconds']}.{winner['hostName']}"
             )
-            self.file_writer(out_file_name, winner)
-            os.chown(out_file_name, self.wombat_uid, self.wombat_gid)
+            if self.file_writer(out_file_name, winner):
+                try:
+                    os.chown(out_file_name, self.wombat_uid, self.wombat_gid)
+                except OSError as error:
+                    logger.error("chown failed for %s: %s", out_file_name, error)
 
     def execute(self) -> None:
         self.worker(self.koala_dir_adsb, self.success_dir_adsb)
         self.worker(self.koala_dir_uat, self.success_dir_uat)
-      
+
+
 if __name__ == "__main__":
     koala = Koala()
     koala.execute()

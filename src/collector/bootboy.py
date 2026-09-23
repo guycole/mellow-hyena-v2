@@ -8,16 +8,18 @@ import json
 import os
 import platform
 import socket
+import subprocess
 import sys
 import time
 from pathlib import Path
-import subprocess
 
 import yaml
 
-
 CONFIG_FILE_NAME = "config.yaml"
-CRONTAB_ENTRY = "* * * * * $HOME/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
+CRONTAB_ENTRY = (
+    "* * * * * $HOME/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
+)
+
 
 class BootBoy:
 
@@ -27,7 +29,10 @@ class BootBoy:
             return False
 
         if os.geteuid() != 0:
-            print(f"{service_name} management skipped: must run as root (systemd boot path).")
+            print(
+                f"{service_name} management skipped: "
+                "must run as root (systemd boot path)."
+            )
             return False
 
         return True
@@ -66,23 +71,23 @@ class BootBoy:
 
         yaml_config = {
             "crateName": crate_name,
+            "freshDir": "/var/wombat/fresh/hyena",
             "equipment": {
                 "hostName": host_name,
                 "hostType": host_type,
             },
+            "geoLoc": geo_loc,
             "receiver": {
                 "antenna": receiver.get("antenna", "xxx"),
                 "receiverId": receiver.get("id", "xxx"),
                 "task": receiver.get("task", "xxx"),
                 "type": receiver.get("type", "xxx"),
             },
-            "freshDir": "/var/wombat/fresh/hyena",
-            "geoLoc": geo_loc,
-            "gpsEnable": False,
         }
 
         task_name = str(receiver.get("task", "xxx"))
-        if task_name.endswith("dump978"):
+        task_name_lc = task_name.lower()
+        if "dump978" in task_name_lc:
             yaml_config["dump978Filename"] = "/tmp/aircraft.json"
         else:
             yaml_config["dump1090Url"] = "http://localhost:8080/data.json"
@@ -90,7 +95,12 @@ class BootBoy:
         # Write to config.yaml in the current directory
         try:
             with open(CONFIG_FILE_NAME, "w", encoding="utf-8") as config_file:
-                yaml.dump(yaml_config, config_file, default_flow_style=False)
+                yaml.dump(
+                    yaml_config,
+                    config_file,
+                    default_flow_style=False,
+                    sort_keys=False,
+                )
             print(f"{CONFIG_FILE_NAME} generated successfully.")
         except Exception as error:
             print(f"Error writing {CONFIG_FILE_NAME}: {error}")
@@ -117,7 +127,10 @@ class BootBoy:
             return
 
         if not self.can_manage_systemd("dump1090.service"):
-            print("dump1090.service not managed because systemd cannot be managed on this system.")
+            print(
+                "dump1090.service not managed because systemd cannot "
+                "be managed on this system."
+            )
             return
 
         # Only start — never enable. dump1090 must not auto-start at boot;
@@ -136,7 +149,10 @@ class BootBoy:
             return
 
         if not self.can_manage_systemd("dump978.service"):
-            print("dump978.service not managed because systemd cannot be managed on this system.")
+            print(
+                "dump978.service not managed because systemd cannot "
+                "be managed on this system."
+            )
             return
 
         # Only start — never enable. dump978 must not auto-start at boot;
