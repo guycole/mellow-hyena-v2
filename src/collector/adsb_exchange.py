@@ -1,111 +1,84 @@
 """adsb exchange API wrapper"""
 
 import logging
-from urllib import response
-import requests
 import sys
+from typing import Any
 
-import yaml
-from yaml.loader import SafeLoader
+import requests
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("hyena")
 
+
 class AdsbExchange:
     """adsb exchange API wrapper"""
 
-    headers = {}
-    in_queue = []
-    out_dict = {}
-
     def __init__(self, api_key: str):
         self.api_key = api_key
+        self.headers: dict[str, str] = {}
 
         self.headers["X-RapidAPI-Key"] = api_key
         self.headers["X-RapidAPI-Host"] = "adsbexchange-com1.p.rapidapi.com"
         self.headers["Content-Type"] = "application/json"
 
-    def janitor(self, value: str) -> str:
+    @staticmethod
+    def janitor(value: str | None) -> str:
         """clean up string values"""
 
-        temp = value.strip()
+        temp = (value or "").strip()
         if len(temp) < 1:
             return "unknown"
 
         return temp
 
-    def parse_aircraft(self, args: dict[str, str]) -> dict[str, str]:
+    def parse_aircraft(self, args: dict[str, Any]) -> dict[str, Any]:
         """parse ADSB exchange API response"""
 
         if len(args) < 1:
             logger.info("skipping empty args")
             return {}
 
-        if args["msg"] != "No error":
-            logger.error(f"{args['msg']}")
+        if args.get("msg") != "No error":
+            logger.error("%s", args.get("msg", "unknown API error"))
             return {}
 
-        if len(args["ac"]) < 1:
+        aircraft = args.get("ac")
+        if not isinstance(aircraft, list) or len(aircraft) < 1:
             logger.info("skipping empty aircraft list")
             return {}
 
-        unwrapped = args["ac"]
-        for ndx, _ in enumerate(unwrapped):
-            results = {}
+        temp = aircraft[0]
+        results: dict[str, Any] = {}
+        results["adsb_hex"] = self.janitor(temp.get("hex")).lower()
+        results["category"] = self.janitor(temp.get("category", "none"))
+        results["emergency"] = self.janitor(temp.get("emergency", "none"))
+        results["flight"] = self.janitor(temp.get("flight", "unknown"))
+        results["registration"] = self.janitor(temp.get("r", "unknown"))
+        results["model"] = self.janitor(temp.get("t", "unknown"))
 
-            temp = unwrapped[ndx]
+        results["ladd_flag"] = False
+        results["military_flag"] = False
+        results["pia_flag"] = False
+        results["wierdo_flag"] = False
 
-            results["adsb_hex"] = temp["hex"].strip().lower()
+        db_flag = temp.get("dbFlags", 0)
+        if isinstance(db_flag, int):
+            if db_flag & 1:
+                results["military_flag"] = True
 
-            if "category" in temp:
-                results["category"] = self.janitor(temp["category"])
-            else:
-                results["category"] = "none"
+            if db_flag & 2:
+                results["wierdo_flag"] = True
 
-            if "emergency" in temp:
-                results["emergency"] = self.janitor(temp["emergency"])
-            else:
-                results["emergency"] = "none"
+            if db_flag & 4:
+                results["pia_flag"] = True
 
-            if "flight" in temp:
-                results["flight"] = self.janitor(temp["flight"])
-            else:
-                results["flight"] = "unknown"
+            if db_flag & 8:
+                results["ladd_flag"] = True
 
-            if "r" in temp:
-                results["registration"] = self.janitor(temp["r"])
-            else:
-                results["registration"] = "unknown"
+        return results
 
-            if "t" in temp:
-                results["model"] = self.janitor(temp["t"])
-            else:
-                results["model"] = "unknown"
-
-            results["ladd_flag"] = False
-            results["military_flag"] = False
-            results["pia_flag"] = False
-            results["wierdo_flag"] = False
-
-            if "dbFlags" in temp:
-                db_flag = temp["dbFlags"]
-
-                if db_flag & 1:
-                    results["military_flag"] = True
-
-                if db_flag & 2:
-                    results["wierdo_flag"] = True
-
-                if db_flag & 4:
-                    results["pia_flag"] = True
-
-                if db_flag & 8:
-                    results["ladd_flag"] = True
-
-            return results
-
-    def fetch(self, adsb_hex: str) -> dict[str, any]:
-        logger.info(f"fetching {adsb_hex} from ADSB exchange")
+    def fetch(self, adsb_hex: str) -> dict[str, Any]:
+        logger.info("fetching %s from ADSB exchange", adsb_hex)
 
         try:
             # https://rapidapi.com/adsbx/api/adsbexchange-com1
@@ -113,22 +86,22 @@ class AdsbExchange:
             response = requests.get(url, headers=self.headers, timeout=5.0)
             if response.status_code == 200:
                 return response.json()
-            else:
-                logger.error(f"skipping {adsb_hex} bad response {response.status_code}")
-        except Exception as error:
-            logger.error(error)
-            
+
+            logger.error("skipping %s bad response %s", adsb_hex, response.status_code)
+        except requests.RequestException as error:
+            logger.error("fetch failed for %s: %s", adsb_hex, error)
+
         return {}
 
-    def execute(self, adsb_hex_list: list[str]) -> dict[str, dict[str, str]]:
+    def execute(self, adsb_hex_list: list[str]) -> dict[str, dict[str, Any]]:
         logger.info("adsb exchange execute")
 
-        candidates = {}
+        candidates: dict[str, dict[str, Any]] = {}
 
         for adsb_hex in adsb_hex_list:
             key = adsb_hex.strip().lower()
             if key in candidates:
-                logger.info(f"skipping duplicate {key}")
+                logger.info("skipping duplicate %s", key)
                 continue
 
             raw = self.fetch(key)
@@ -142,18 +115,9 @@ class AdsbExchange:
 # argv[1] = configuration filename
 #
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        file_name = sys.argv[1]
-    else:
-        file_name = "config.yaml"
-
-    with open(file_name, "r") as in_file:
-        try:
-            configuration = yaml.load(in_file, Loader=SafeLoader)
-            adsbx = AdsbExchange("bogus")
-            adsbx.execute(["aa41f0","aadb37", "c0502e", "aadb35"])
-        except yaml.YAMLError as error:
-            logger.error(error)
+    _ = sys.argv
+    adsbx = AdsbExchange("bogus")
+    adsbx.execute(["aa41f0", "aadb37", "c0502e", "aadb35"])
 
 # ;;; Local Variables: ***
 # ;;; mode:python ***

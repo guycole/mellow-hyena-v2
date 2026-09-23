@@ -1,9 +1,8 @@
 #
 # docker build -t hyena:latest -f src/wombat_docker/Dockerfile src/
 # docker run -v /var/wombat:/mnt/wombat --name hyena hyena:latest
-# docker run -e stuntbox=validate -v /var/wombat:/mnt/wombat --name hyena hyena:latest
-# docker run -e stuntbox=score -e limit=5 --name hyena hyena:latest
-# docker run -e stuntbox=score --name hyena hyena:latest
+# docker run -e stuntbox=validator -v /var/wombat:/mnt/wombat --name hyena hyena:latest
+# docker run -e stuntbox=koala -v /var/wombat:/mnt/wombat --name hyena hyena:latest
 #
 FROM python:3.11-slim
 
@@ -49,12 +48,12 @@ COPY wombat_docker/validator.py ./
 RUN printf '%s\n' '#!/bin/sh' 'set -e' '/usr/local/bin/collect-wombat-ids.sh' 'set -a' '[ -f /app/wombat_env.env ] && . /app/wombat_env.env' 'set +a' 'exec "$@"' > /usr/local/bin/docker-entrypoint.sh \
 	&& chmod +x /usr/local/bin/docker-entrypoint.sh
 
-ENV FAILURE_DIR=/mnt/wombat/failure/
+ENV FAILURE_DIR=/mnt/wombat/failure
 ENV FRESH_DIR=/mnt/wombat/fresh/hyena
 ENV KOALA_DIR_ADSB=/mnt/wombat/hyena/koala_adsb
 ENV KOALA_DIR_UAT=/mnt/wombat/hyena/koala_uat
-ENV SUCCESS_DIR_ADSB=/mnt/wombat/hyena/success_adsb/
-ENV SUCCESS_DIR_UAT=/mnt/wombat/hyena/success_uat/
+ENV SUCCESS_DIR_ADSB=/mnt/wombat/hyena/success_adsb
+ENV SUCCESS_DIR_UAT=/mnt/wombat/hyena/success_uat
 
 ENV DB_CONN=postgresql+psycopg2://hyena_client:batabat@172.17.0.1:5432/hyena
 

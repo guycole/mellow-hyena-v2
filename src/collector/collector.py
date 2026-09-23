@@ -8,16 +8,16 @@
 import datetime
 import json
 import logging
-import requests
-import socket
+import os
 import sys
 import time
-from typing import Any
 import uuid
 import zoneinfo
 
-from helper.json_helper import JsonHelper
+from typing import Any
 
+import pydantic
+import requests
 import yaml
 from yaml.loader import SafeLoader
 
@@ -25,6 +25,77 @@ from adsb_exchange import AdsbExchange
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("hyena")
+
+
+class AdsbEx(pydantic.BaseModel):
+    adsb_hex: str
+    category: str
+    emergency: str
+    flight: str
+    registration: str
+    model: str
+    ladd_flag: bool
+    military_flag: bool
+    pia_flag: bool
+    wierdo_flag: bool
+
+class Equipment(pydantic.BaseModel):
+    hostName: str
+    hostType: str
+
+
+class GeoLoc(pydantic.BaseModel):
+    altitude: float
+    latitude: float
+    longitude: float
+    siteName: str
+
+class Job(pydantic.BaseModel):
+    mode: str
+    project: str
+    task: str
+
+
+class Observation(pydantic.BaseModel):
+    hex: str
+    flight: str
+    latitude: str
+    longitude: str
+    altitude: str
+    track: str
+    speed: str
+
+class Receiver(pydantic.BaseModel):
+    antenna: str
+    receiverId: int
+    task: str
+    type: str
+
+
+class TimeStamp(pydantic.BaseModel):
+    epochSeconds: int = pydantic.Field(default_factory=lambda: int(time.time()))
+    iso8601: str = ""
+
+    @pydantic.model_validator(mode="after")
+    def sync_iso8601_from_epoch(self) -> "TimeStamp":
+        self.iso8601 = datetime.datetime.fromtimestamp(
+            self.epochSeconds, tz=zoneinfo.ZoneInfo("UTC")
+        ).isoformat()
+        return self
+
+
+class HyenaModel(pydantic.BaseModel):
+    crateName: str
+    fileName: str
+    version: int = 1
+    equipment: Equipment
+    geoLoc: GeoLoc
+    job: Job
+    receiver: Receiver
+    timeStamp: TimeStamp
+    adsbex: dict[str, AdsbEx]
+    observations: list[Observation]
+
 
 class Collector:
     """make the observation file"""
@@ -39,8 +110,8 @@ class Collector:
         self.crate_name = args["crateName"]
         self.fresh_dir = args["freshDir"]
 
-        self.host_name = args['equipment']["hostName"]
-        self.host_type = args['equipment']["hostType"]
+        self.host_name = args["equipment"]["hostName"]
+        self.host_type = args["equipment"]["hostType"]
 
         self.altitude = args["geoLoc"]["altitude"]
         self.latitude = args["geoLoc"]["latitude"]
@@ -52,7 +123,29 @@ class Collector:
         self.receiver_task = args["receiver"]["task"]
         self.receiver_type = args["receiver"]["type"]
 
+        self.equipment = Equipment(**args["equipment"])
+        self.geo_loc = GeoLoc(**args["geoLoc"])
+        self.receiver = Receiver(**args["receiver"])
+        self.time_stamp = TimeStamp()
+
+        # hyena-v2-dump1090
+        task = args["receiver"]["task"]
+        tokens = task.split("-")
+        mode = tokens[-1]
+        project = "-".join(tokens[:-1])
+        self.job = Job(mode=mode, project=project, task=task)
+
+    @staticmethod
+    def _to_text(value: Any, fallback: str) -> str:
+        if value is None:
+            return fallback
+        return str(value).strip() or fallback
+
     def dump978(self) -> list[dict[str, Any]]:
+        if not os.path.exists(self.dump978filename):
+            logger.warning("dump978 file does not exist: %s", self.dump978filename)
+            return []
+
         try:
             with open(self.dump978filename, "r", encoding="utf-8") as infile:
                 buffer = json.load(infile)
@@ -81,39 +174,47 @@ class Collector:
             #   {"hex":"a6128d","lat":38.054087,"lon":-122.454450,"seen_pos":54,"altitude":4400,"vert_rate":192,"track":322,"speed":99,"messages":4,"seen":54,"rssi":0}
 
             temp = {
-                "hex": element.get("hex", "unknown").strip(),
-                "flight": element.get("flight", "unknown").strip(),
-                "latitude": str(element.get("lat", 0.0)).strip(),
-                "longitude": str(element.get("lon", 0.0)).strip(),
-                "altitude": str(element.get("altitude", 0)).strip(),
-                "track": str(element.get("track", 0)).strip(),
-                "speed": str(element.get("speed", 0)).strip(),
+                "hex": self._to_text(element.get("hex"), "unknown"),
+                "flight": self._to_text(element.get("flight"), "unknown"),
+                "latitude": self._to_text(element.get("lat"), "0.0"),
+                "longitude": self._to_text(element.get("lon"), "0.0"),
+                "altitude": self._to_text(element.get("altitude"), "0"),
+                "track": self._to_text(element.get("track"), "0"),
+                "speed": self._to_text(element.get("speed"), "0"),
             }
 
             results.append(temp)
 
         return results
-    
+
     def dump1090(self) -> list[dict[str, Any]]:
         raw = []
 
         try:
             response = requests.get(self.dump1090url, timeout=5.0)
             if response.status_code == 200:
-                raw = json.loads(response.text)
+                candidate = response.json()
+                if isinstance(candidate, list):
+                    raw = candidate
+                else:
+                    logger.warning("dump1090 payload is not a list")
+            else:
+                logger.warning("dump1090 bad response: %s", response.status_code)
+        except requests.RequestException:
+            logger.exception("dump1090 request failure: %s", self.dump1090url)
         except Exception as error:
             logger.error("dump1090 error: %s", error)
 
         results = []
         for element in raw:
             temp = {
-                "hex": element.get("hex", "unknown").strip(),
-                "flight": element.get("flight", "unknown").strip(),
-                "latitude": str(element.get("lat", 0.0)).strip(),
-                "longitude": str(element.get("lon", 0.0)).strip(),
-                "altitude": str(element.get("altitude", 0)).strip(),
-                "track": str(element.get("track", 0)).strip(),
-                "speed": str(element.get("speed", 0)).strip()
+                "hex": self._to_text(element.get("hex"), "unknown"),
+                "flight": self._to_text(element.get("flight"), "unknown"),
+                "latitude": self._to_text(element.get("lat"), "0.0"),
+                "longitude": self._to_text(element.get("lon"), "0.0"),
+                "altitude": self._to_text(element.get("altitude"), "0"),
+                "track": self._to_text(element.get("track"), "0"),
+                "speed": self._to_text(element.get("speed"), "0"),
             }
 
             results.append(temp)
@@ -123,66 +224,50 @@ class Collector:
     def execute(self, adsbex_key: str | None) -> None:
         logger.info("collector execute: %s", self.receiver_task)
 
+        os.makedirs(self.fresh_dir, exist_ok=True)
         base_file_name = str(uuid.uuid4())
         logger.info("base filename: %s", base_file_name)
-
-        epoch_seconds = int(time.time())
-        dt_object_utc = datetime.datetime.fromtimestamp(
-            epoch_seconds, tz=zoneinfo.ZoneInfo("UTC")
-        )
-
-        outfile_json = f"{self.fresh_dir}/{base_file_name}.json"
+        output_file_name = f"{base_file_name}.json"
+        output_path = os.path.join(self.fresh_dir, output_file_name)
 
         if "dump1090" in self.receiver_task:
-            mode = "dump1090"
             observations = self.dump1090()
         elif "dump978" in self.receiver_task:
-            mode = "dump978"
             observations = self.dump978()
         else:
             logger.error("unknown collection mode: %s", self.receiver_task)
             return
 
-        candidates = [observation["hex"] for observation in observations]
+        candidates = [
+            observation["hex"]
+            for observation in observations
+            if observation.get("hex") and observation["hex"] != "unknown"
+        ]
 
-        adsbex = {}
+        adsbex: dict[str, dict[str, Any]] = {}
         if adsbex_key:
             adsb_exchange = AdsbExchange(adsbex_key)
             adsbex = adsb_exchange.execute(candidates)
         else:
             logger.warning("skipping ADS-B Exchange lookup because no API key is available")
 
-        results = {
-            "equipment": {
-                "antenna": self.antenna,  
-                "receiverId": self.receiver_id,
-                "receiverType": self.receiver_type,
-                "hostName": self.host_name,  
-                "hostType": self.host_type,
-            },
-            "geoLoc": {
-                "altitude": self.altitude,
-                "latitude": self.latitude,
-                "longitude": self.longitude,
-                "siteName": self.site_name,
-            },
-            "job": {
-                "mode": mode,
-                "project": "hyena-v2",
-                "task": self.receiver_task,
-            },
-            "timeStamp": {
-                "epochSeconds": epoch_seconds,
-                "iso8601": dt_object_utc.isoformat(),
-            },
-            "crateName": self.crate_name,
-            "fileName": f"{base_file_name}.json",
-            "version": 1,
-            "adsbex": adsbex,
-            "observations": observations,
-        }
+        hyena_model = HyenaModel(
+            crateName=self.crate_name,
+            fileName=output_file_name,
+            equipment=self.equipment,
+            geoLoc=self.geo_loc,
+            job=self.job,
+            receiver=self.receiver,
+            timeStamp=self.time_stamp,
+            adsbex=adsbex,
+            observations=observations,
+        )
 
-        JsonHelper().json_file_writer(outfile_json, results)
+        with open(output_path, "w", encoding="utf-8") as out_file:
+            out_file.write(hyena_model.model_dump_json(indent=4))
+            out_file.write("\n")
+
+        logger.info("wrote %s observations to %s", len(observations), output_path)
 
 #
 # argv[1] = configuration filename
@@ -193,14 +278,15 @@ if __name__ == "__main__":
     else:
         file_name = "config.yaml"
 
-    with open("adsbex.key", "r") as key_file:
-        try:
-            adsbex_key = key_file.read().strip()
-        except Exception as error:
-            logger.exception("adsbex key read error: %s", error)
-            adsbex_key = None
+    adsbex_key = None
+#    with open("adsbex.key", "r") as key_file:
+#        try:
+#            adsbex_key = key_file.read().strip()
+#        except Exception as error:
+#            logger.exception("adsbex key read error: %s", error)
+#            adsbex_key = None
 
-    with open(file_name, "r") as in_file:
+    with open(file_name, "r", encoding="utf-8") as in_file:
         try:
             configuration = yaml.load(in_file, Loader=SafeLoader)
             collector = Collector(configuration)

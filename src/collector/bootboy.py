@@ -9,9 +9,15 @@ import os
 import platform
 import socket
 import sys
+import time
+from pathlib import Path
+import subprocess
 
 import yaml
-from yaml.loader import SafeLoader
+
+
+CONFIG_FILE_NAME = "config.yaml"
+CRONTAB_ENTRY = "* * * * * $HOME/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
 
 class BootBoy:
 
@@ -27,10 +33,13 @@ class BootBoy:
         return True
 
     def run_systemctl(self, action: str, service_name: str) -> tuple[int, str]:
-        import subprocess
         # Use --no-block for start so systemd queues the job and returns
         # immediately, preventing a deadlock when bootboy itself runs under systemd.
-        cmd = ["systemctl", "--no-block", action, service_name] if action == "start" else ["systemctl", action, service_name]
+        cmd = (
+            ["systemctl", "--no-block", action, service_name]
+            if action == "start"
+            else ["systemctl", action, service_name]
+        )
         proc = subprocess.run(cmd, capture_output=True, text=True)
         stderr = proc.stderr.strip()
         return proc.returncode, stderr
@@ -39,13 +48,13 @@ class BootBoy:
         print(f"BootBoy: configuring {target}")
 
         # Build the path to the admin JSON file
-        admin_json_path = f"/var/wombat/admin/{target}.json"
+        admin_json_path = Path(f"/var/wombat/admin/{target}.json")
 
         try:
-            with open(admin_json_path, "r") as f:
-                config_data = json.load(f)
-        except Exception as e:
-            print(f"Error reading {admin_json_path}: {e}")
+            with admin_json_path.open("r", encoding="utf-8") as admin_file:
+                config_data = json.load(admin_file)
+        except Exception as error:
+            print(f"Error reading {admin_json_path}: {error}")
             sys.exit(1)
 
         # Compose new config dict for YAML output
@@ -72,24 +81,24 @@ class BootBoy:
             "gpsEnable": False,
         }
 
-        if receiver["task"].endswith("dump978"):
+        task_name = str(receiver.get("task", "xxx"))
+        if task_name.endswith("dump978"):
             yaml_config["dump978Filename"] = "/tmp/aircraft.json"
         else:
             yaml_config["dump1090Url"] = "http://localhost:8080/data.json"
 
         # Write to config.yaml in the current directory
         try:
-            with open("config.yaml", "w") as f:
-                yaml.dump(yaml_config, f, default_flow_style=False)
-            print("config.yaml generated successfully.")
-        except Exception as e:
-            print(f"Error writing config.yaml: {e}")
+            with open(CONFIG_FILE_NAME, "w", encoding="utf-8") as config_file:
+                yaml.dump(yaml_config, config_file, default_flow_style=False)
+            print(f"{CONFIG_FILE_NAME} generated successfully.")
+        except Exception as error:
+            print(f"Error writing {CONFIG_FILE_NAME}: {error}")
             sys.exit(1)
 
-        return receiver.get("task", "xxx")
+        return task_name
 
     def verify_service_active(self, service_name: str) -> None:
-        import time
         # --no-block returns immediately; give systemd a moment to actually
         # start (or fail to start) the service before checking.
         time.sleep(2)
@@ -97,7 +106,10 @@ class BootBoy:
         if returncode == 0:
             print(f"{service_name} is active.")
         else:
-            print(f"{service_name} is NOT active after start — check: journalctl -u {service_name}")
+            print(
+                f"{service_name} is NOT active after start; "
+                f"check: journalctl -u {service_name}"
+            )
 
     def manage_dump1090(self, receiver_task: str) -> None:
         if "dump1090" not in receiver_task.lower():
@@ -138,20 +150,23 @@ class BootBoy:
             print(f"Failed to start dump978.service: {stderr}")
 
     def crontab(self) -> None:
-        import subprocess
-        crontab_entry = "* * * * * $HOME/github/mellow-hyena-v2/bin/collector.sh > /dev/null 2>&1"
-
         # Always overwrite — wombat is dedicated to this workload and must have
         # exactly one cron entry.  This removes any stale entries unconditionally.
-        new_crontab = crontab_entry + "\n"
+        new_crontab = CRONTAB_ENTRY + "\n"
         try:
-            proc = subprocess.run(["crontab", "-u", "wombat", "-"], input=new_crontab, text=True)
+            proc = subprocess.run(
+                ["crontab", "-u", "wombat", "-"],
+                input=new_crontab,
+                text=True,
+                capture_output=True,
+            )
             if proc.returncode == 0:
                 print("crontab updated for wombat.")
             else:
-                print("Failed to update wombat crontab.")
-        except Exception as e:
-            print(f"Error updating wombat crontab: {e}")
+                stderr = proc.stderr.strip() or "no stderr"
+                print(f"Failed to update wombat crontab: {stderr}")
+        except Exception as error:
+            print(f"Error updating wombat crontab: {error}")
 
     def execute(self, target: str) -> None:
         task = self.configuration(target)
@@ -162,7 +177,7 @@ class BootBoy:
 #
 if __name__ == "__main__":
     target = socket.gethostname()
-    #target = "pi4k"
+    # target = "pi4k"
 
     bb = BootBoy()
     bb.execute(target)

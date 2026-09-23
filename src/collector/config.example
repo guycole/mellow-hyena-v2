@@ -3,7 +3,7 @@ dump978Filename: /tmp/aircraft.json
 equipment:
   hostName: pi4h
   hostType: rpi4
-freshDir: /var/wombat/fresh/heeler
+freshDir: /var/wombat/fresh/hyena
 geoLoc:
   altitude: 0
   latitude: 38.108

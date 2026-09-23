@@ -1,0 +1,15 @@
+[project]
+name = "hyena-collector"
+version = "0.0.0"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+python_files = ["test_*.py"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = []

@@ -18,6 +18,6 @@ echo "start collection"
 sleep 13
 cd $WORK_DIR
 source venv/bin/activate
-python3 ./collector.py
+stuntbox=collector python3 ./collector_app.py
 echo "end collection"
 #

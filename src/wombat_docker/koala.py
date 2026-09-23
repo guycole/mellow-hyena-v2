@@ -5,18 +5,19 @@
 # Author: G.S. Cole (guycole at gmail dot com)
 #
 import logging
-import datetime
 import json
 import os
+from typing import Any
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("koala")
 
+
 class Koala:
 
-    def __init__(self):      
+    def __init__(self):
         self.koala_dir_adsb = os.environ.get("KOALA_DIR_ADSB", "/var/wombat/hyena/koala_adsb")
-        self.koala_dir_uat = os.environ.get("KOALA_DIR_UAT", "/var/wombat/hyena/koala_uat")        
+        self.koala_dir_uat = os.environ.get("KOALA_DIR_UAT", "/var/wombat/hyena/koala_uat")
         self.success_dir_adsb = os.environ.get("SUCCESS_DIR_ADSB", "/var/wombat/hyena/success_adsb")
         self.success_dir_uat = os.environ.get("SUCCESS_DIR_UAT", "/var/wombat/hyena/success_uat")
 
@@ -29,24 +30,25 @@ class Koala:
             with open(file_name, "r", encoding="utf-8") as in_file:
                 self.raw_buffer = json.load(in_file)
         except Exception as error:
-            logger.error(f"file read failed for {file_name}: {error}")
+            logger.error("file read failed for %s: %s", file_name, error)
             return False
 
         return True
-    
-    def file_writer(self, file_name: str, content: dict) -> bool:
+
+    def file_writer(self, file_name: str, content: dict[str, Any]) -> bool:
         try:
             with open(file_name, "w", encoding="utf-8") as out_file:
-                json.dump(content, out_file)
+                json.dump(content, out_file, indent=4)
+                out_file.write("\n")
         except Exception as error:
-            logger.error(f"file write failed for {file_name}: {error}")
+            logger.error("file write failed for %s: %s", file_name, error)
             return False
 
         return True
 
-    def file_processor(self, file_name: str) -> dict[str, any]:
+    def file_processor(self, file_name: str) -> dict[str, Any]:
         if not self.file_reader(file_name):
-            logger.warning(f"file read failed for {file_name}")
+            logger.warning("file read failed for %s", file_name)
             return {}
 
         result = {
@@ -64,15 +66,19 @@ class Koala:
         return result
 
     def worker(self, koala_dir: str, success_dir: str) -> None:
-        logger.info(f"koala dir: {koala_dir} success dir:{success_dir}")
+        logger.info("koala dir: %s success dir:%s", koala_dir, success_dir)
+
+        os.makedirs(koala_dir, exist_ok=True)
+        if not os.path.isdir(success_dir):
+            logger.warning("success dir missing: %s", success_dir)
+            return
 
         os.chdir(success_dir)
         targets = [ff for ff in os.listdir(".") if ff.endswith(".json")]
-        logger.info(f"{len(targets)} files noted")
+        logger.info("%s files noted", len(targets))
 
         # koala only gets the most recent
         candidates = {}
-        max_list_size = 5
         for target in targets:
             candidate = self.file_processor(target)
             if len(candidate) > 0:
@@ -86,7 +92,9 @@ class Koala:
         if winner is None:
             logger.info("no winner found")
         else:
-            out_file_name = f"{koala_dir}/{winner['epochSeconds']}.{winner['hostName']}"
+            out_file_name = os.path.join(
+                koala_dir, f"{winner['epochSeconds']}.{winner['hostName']}"
+            )
             self.file_writer(out_file_name, winner)
             os.chown(out_file_name, self.wombat_uid, self.wombat_gid)
 
@@ -97,7 +105,7 @@ class Koala:
 if __name__ == "__main__":
     koala = Koala()
     koala.execute()
-    
+
 # ;;; Local Variables: ***
 # ;;; mode:python ***
 # ;;; End: ***

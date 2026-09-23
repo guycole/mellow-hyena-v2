@@ -6,25 +6,54 @@
 #
 import logging
 import datetime
-import json
 import os
+from abc import ABC, abstractmethod
 
-from helper.json_helper import JsonHelper, schema
+from helper.json_helper import JsonHelper
 
 from helper.postgres import PostGres
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("validator")
 
-class Validator:
 
-    def __init__(self, postgres: PostGres):
+class Validator(ABC):
+
+    @abstractmethod
+    def file_processor(self, file_name: str) -> bool:
+        pass
+
+    @abstractmethod
+    def execute(self) -> int:
+        pass
+
+    @abstractmethod
+    def file_failure(self, file_name: str) -> None:
+        pass
+
+    @abstractmethod
+    def file_success(self, file_name: str) -> None:
+        pass
+
+    @abstractmethod
+    def load_log_test(self, test_file_name: str) -> bool:
+        pass
+
+
+class HyenaValidator(Validator):
+
+    def __init__(self, app_logger: logging.Logger, postgres: PostGres):
+        self.logger = app_logger
         self.postgres = postgres
 
         self.failure_dir = os.environ.get("FAILURE_DIR", "/var/wombat/failure")
-        self.fresh_dir = os.environ.get("FRESH_DIR", "/var/wombat/fresh/heeler")
-        self.success_dir_adsb = os.environ.get("SUCCESS_DIR_ADSB", "/var/wombat/hyena/success_adsb")
-        self.success_dir_uat = os.environ.get("SUCCESS_DIR_UAT", "/var/wombat/hyena/success_uat")
+        self.fresh_dir = os.environ.get("FRESH_DIR", "/var/wombat/fresh/hyena")
+        self.success_dir_adsb = os.environ.get(
+            "SUCCESS_DIR_ADSB", "/var/wombat/hyena/success_adsb"
+        )
+        self.success_dir_uat = os.environ.get(
+            "SUCCESS_DIR_UAT", "/var/wombat/hyena/success_uat"
+        )
 
         self.failure = 0
         self.success_adsb = 0
@@ -32,139 +61,177 @@ class Validator:
 
         self.adsb_flag = True
 
-        self.jh = JsonHelper()
+        self.json_helper = JsonHelper()
 
-    def file_failure(self, file_name: str):
-        logger.info(f"file failure:{file_name}")
+    def file_failure(self, file_name: str) -> None:
+        self.logger.info("file failure:%s", file_name)
 
         self.failure += 1
-        os.rename(file_name, self.failure_dir + file_name)
+        failure_target = os.path.join(self.failure_dir, file_name)
+        try:
+            os.rename(file_name, failure_target)
+        except Exception as error:
+            self.logger.error(
+                "file move failure for %s -> %s: %s", file_name, failure_target, error
+            )
 
-    def file_success(self, file_name: str):
-        #logger.info(f"file success:{file_name}")
+    def _success_target(self, file_name: str) -> str:
+        if self.adsb_flag:
+            return os.path.join(self.success_dir_adsb, file_name)
+
+        return os.path.join(self.success_dir_uat, file_name)
+
+    def file_success(self, file_name: str) -> None:
+        self.logger.info("file success:%s", file_name)
 
         if self.adsb_flag:
             self.success_adsb += 1
-            os.rename(file_name, self.success_dir_adsb + "/" + file_name)
         else:
             self.success_uat += 1
-            os.rename(file_name, self.success_dir_uat + "/" + file_name)
+
+        success_target = self._success_target(file_name)
+        try:
+            os.rename(file_name, success_target)
+        except Exception as error:
+            self.logger.error(
+                "file move failure for %s -> %s: %s", file_name, success_target, error
+            )
 
     def load_log_test(self, test_file_name: str) -> bool:
-        logger.info(f"load_log_test for file: {test_file_name}")
+        self.logger.info("load_log_test for file: %s", test_file_name)
 
         try:
             candidate = self.postgres.load_log_select_by_file_name(test_file_name)
-            if candidate is None:
-                logger.info(f"processing new file:{test_file_name}")
+            if candidate is not None:
+                self.logger.info("skipping already processed:%s", test_file_name)
+                return False
 
-                geo_loc = self.postgres.geo_loc_select_by_site(self.jh.raw_json["geoLoc"]["siteName"])
-                if len(geo_loc) == 0:
-                    logger.warning(
-                        "must insert geo_loc for site: %s",
-                        self.jh.raw_json["geoLoc"]["siteName"],
-                    )
-                    return False
+            self.logger.info("processing new file:%s", test_file_name)
 
-                load_log = {
-                    "adsbex_quantity": len(self.jh.raw_json["adsbex"]),
-                    "crate_name": self.jh.raw_json["crateName"],
-                    "epoch_seconds": self.jh.raw_json["timeStamp"]["epochSeconds"],
-                    "file_name": test_file_name,
-                    "geo_loc_id": geo_loc[0].id,
-                    "host_name": self.jh.raw_json["equipment"]["hostName"],
-                    "load_time": datetime.datetime.now(),
-                    "mode": self.jh.raw_json["job"]["mode"],
-                    "obs_quantity": len(self.jh.raw_json["observations"]),
-                    "obs_time": self.jh.raw_json["timeStamp"]["iso8601"],
-                    "site_name": self.jh.raw_json["geoLoc"]["siteName"],
-                    "task": self.jh.raw_json["job"]["task"],
-                }
+            raw_buffer = self.json_helper.raw_json
+            geo_loc = self.postgres.geo_loc_select_by_site(raw_buffer["geoLoc"]["siteName"])
+            if len(geo_loc) == 0:
+                self.logger.warning(
+                    "must insert geo_loc for site: %s", raw_buffer["geoLoc"]["siteName"]
+                )
+                return False
 
-                self.postgres.load_log_insert(load_log)
+            load_log = {
+                "adsbex_quantity": len(raw_buffer["adsbex"]),
+                "crate_name": raw_buffer["crateName"],
+                "epoch_seconds": raw_buffer["timeStamp"]["epochSeconds"],
+                "file_name": test_file_name,
+                "geo_loc_id": geo_loc[0].id,
+                "host_name": raw_buffer["equipment"]["hostName"],
+                "load_time": datetime.datetime.now(),
+                "mode": raw_buffer["job"]["mode"],
+                "obs_quantity": len(raw_buffer["observations"]),
+                "obs_time": raw_buffer["timeStamp"]["iso8601"],
+                "site_name": raw_buffer["geoLoc"]["siteName"],
+                "task": raw_buffer["job"]["task"],
+            }
 
-                if self.jh.raw_json["job"]["mode"] == "dump1090":
-                    self.adsb_flag = True
-                    quantity_adsb = len(self.jh.raw_json["observations"])
-                    quantity_uat = 0
-                else:
-                    self.adsb_flag = False
-                    quantity_adsb = 0
-                    quantity_uat = len(self.jh.raw_json["observations"])
+            self.postgres.load_log_insert(load_log)
 
-                daily_score = {
-                    "crate_name": self.jh.raw_json["crateName"],
-                    "file_quantity": 1,
-                    "host_name": self.jh.raw_json["equipment"]["hostName"],
-                    "quantity_adsb": quantity_adsb,
-                    "quantity_uat": quantity_uat,
-                    "score_date": datetime.date.fromisoformat(self.jh.raw_json["timeStamp"]["iso8601"][:10]),
-                }
+            if raw_buffer["job"]["mode"] == "dump1090":
+                self.adsb_flag = True
+                quantity_adsb = len(raw_buffer["observations"])
+                quantity_uat = 0
+            else:
+                self.adsb_flag = False
+                quantity_adsb = 0
+                quantity_uat = len(raw_buffer["observations"])
 
-                self.postgres.daily_score_insert_or_update(daily_score)
+            daily_score = {
+                "crate_name": raw_buffer["crateName"],
+                "file_quantity": 1,
+                "host_name": raw_buffer["equipment"]["hostName"],
+                "quantity_adsb": quantity_adsb,
+                "quantity_uat": quantity_uat,
+                "score_date": datetime.date.fromisoformat(
+                    raw_buffer["timeStamp"]["iso8601"][:10]
+                ),
+            }
 
-                if len(self.jh.raw_json["observations"]) < 1:
-                    logger.info("skipping file with no observations")
-                    return False
+            self.postgres.daily_score_insert_or_update(daily_score)
 
-                return True
+            if len(raw_buffer["observations"]) < 1:
+                self.logger.info("skipping file with no observations")
+                return False
+
+            return True
         except Exception as error:
-            logger.error(f"postgres insert failed for {test_file_name}: {error}")        
-        
+            self.logger.error("postgres insert failed for %s: %s", test_file_name, error)
+
         return False
 
-    def file_processor(self, file_name: str) -> None:
-        logger.info(f"processing file: {file_name}")
+    def file_processor(self, file_name: str) -> bool:
+        self.logger.info("processing file: %s", file_name)
 
-        if os.path.isfile(file_name) is False:
-            logger.warning(f"skipping non-file:{file_name}")
+        if not os.path.isfile(file_name):
+            self.logger.warning("skipping non-file:%s", file_name)
             self.file_failure(file_name)
-            return
+            return False
 
         if os.path.getsize(file_name) < 1:
-            logger.warning(f"skipping empty file:{file_name}")
+            self.logger.warning("skipping empty file:%s", file_name)
             self.file_failure(file_name)
-            return
+            return False
 
         if not file_name.endswith(".json"):
-            logger.warning(f"skipping non-json:{file_name}")
+            self.logger.warning("skipping non-json:%s", file_name)
             self.file_failure(file_name)
-            return
+            return False
 
-        if not self.jh.json_file_reader(file_name, True):
-            logger.warning(f"file read failed for {file_name}")
+        if not self.json_helper.json_file_reader(file_name, True):
+            self.logger.warning("file read failed for %s", file_name)
             self.file_failure(file_name)
-            return
+            return False
 
         try:
-            if self.jh.raw_json["version"] == 1 and self.jh.raw_json["job"]["project"] == "hyena-v2":
-                pass
-            else:
-                logger.warning(f"invalid version or project for {file_name}")
+            raw_buffer = self.json_helper.raw_json
+            if raw_buffer["version"] != 1 or raw_buffer["job"]["project"] != "hyena-v2":
+                self.logger.warning("invalid version or project for %s", file_name)
                 self.file_failure(file_name)
-                return
+                return False
         except Exception as error:
-            logger.error(f"project/version failure for {file_name}: {error}")
+            self.logger.error("project/version failure for %s: %s", file_name, error)
             self.file_failure(file_name)
-            return
+            return False
 
         if self.load_log_test(file_name):
             self.file_success(file_name)
-        else:
-            self.file_failure(file_name)
+            return True
 
-    def execute(self) -> None:
-        logger.info("validator")
-        logger.info(f"fresh dir:{self.fresh_dir}")
+        self.file_failure(file_name)
+        return False
+
+    def execute(self) -> int:
+        self.logger.info("validator fresh dir:%s", self.fresh_dir)
+        if not os.path.isdir(self.fresh_dir):
+            self.logger.error("fresh dir missing:%s", self.fresh_dir)
+            return 1
 
         os.chdir(self.fresh_dir)
         targets = sorted(os.listdir("."))
-        logger.info(f"{len(targets)} files noted")
+        self.logger.info("%s files noted", len(targets))
 
         for target in targets:
             self.file_processor(target)
 
-        logger.info(f"validator adsb success:{self.success_adsb} uat success:{self.success_uat} failure:{self.failure}")
+        self.logger.info(
+            "validator adsb success:%s uat success:%s failure:%s",
+            self.success_adsb,
+            self.success_uat,
+            self.failure,
+        )
+
+        return 0
+
+
+if __name__ == "__main__":
+    logger.error("Run via hyena_app.py with stuntbox=validator")
+    raise SystemExit(1)
 
 # ;;; Local Variables: ***
 # ;;; mode:python ***
