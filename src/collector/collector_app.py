@@ -12,7 +12,7 @@ import yaml
 from yaml.loader import SafeLoader
 
 from bootboy import BootBoy
-from collector import Collector
+from collector import HyenaCollector
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("hyena")
@@ -41,9 +41,8 @@ class CollectorApp:
             config_path = os.environ.get("COLLECTOR_CONFIG", "config.yaml")
             adsbex_key = os.environ.get("ADSBEX_KEY")
             configuration = self._load_config(config_path)
-            collector = Collector(configuration)
-            collector.execute(adsbex_key)
-            return 0
+            collector = HyenaCollector(configuration)
+            return collector.execute(adsbex_key)
 
         if self.stunt_box == "bootboy":
             target = os.environ.get("BOOTBOY_TARGET") or socket.gethostname()
