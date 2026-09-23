@@ -18,13 +18,21 @@ schema = {
         "equipment": {
             "type": "object",
             "properties": {
-                "antenna":      {"type": "string"},
-                "receiverId":   {"type": "number"},
-                "receiverType": {"type": "string"},
                 "hostName":     {"type": "string"},
                 "hostType":     {"type": "string"},
             },
-            "required": ["antenna", "receiverId", "receiverType", "hostName", "hostType"],
+            "required": ["hostName", "hostType"],
+            "additionalProperties": False
+        },
+        "receiver": {
+            "type": "object",
+            "properties": {
+                "antenna":    {"type": "string"},
+                "receiverId": {"type": "number"},
+                "task":       {"type": "string"},
+                "type":       {"type": "string"},
+            },
+            "required": ["antenna", "receiverId", "task", "type"],
             "additionalProperties": False
         },
         "geoLoc": {
@@ -98,7 +106,7 @@ schema = {
             }
         },
     },
-    "required": ["equipment", "geoLoc", "job", "timeStamp", "crateName", "fileName", "version", "adsbex", "observations"],
+    "required": ["equipment", "geoLoc", "job", "receiver", "timeStamp", "crateName", "fileName", "version", "adsbex", "observations"],
     "additionalProperties": False
 }
 
