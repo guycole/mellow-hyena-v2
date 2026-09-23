@@ -7,20 +7,18 @@
 import logging
 import os
 
+from helper.postgres import PostGres
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from koala import Koala
 from validator import HyenaValidator
 
-from helper.postgres import PostGres
-
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("hyena")
 
 
 class HyenaApp:
-
     def __init__(self, stunt_box: str):
         self.stunt_box = stunt_box
 
@@ -55,6 +53,7 @@ class HyenaApp:
 
         logger.error("invalid stunt_box option:%s", self.stunt_box)
         return 1
+
 
 if __name__ == "__main__":
     # stunt_box options: "koala" and "validator"
