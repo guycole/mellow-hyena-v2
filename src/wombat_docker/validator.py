@@ -55,10 +55,12 @@ class HyenaValidator(Validator):
         )
 
         self.failure = 0
+        self.skipped = 0
         self.success_adsb = 0
         self.success_uat = 0
 
         self.adsb_flag = True
+        self.skip_current_file = False
 
         self.json_helper = JsonHelper()
 
@@ -98,11 +100,13 @@ class HyenaValidator(Validator):
 
     def load_log_test(self, test_file_name: str) -> bool:
         self.logger.info("load_log_test for file: %s", test_file_name)
+        self.skip_current_file = False
 
         try:
             candidate = self.postgres.load_log_select_by_file_name(test_file_name)
             if candidate is not None:
                 self.logger.info("skipping already processed:%s", test_file_name)
+                self.skip_current_file = True
                 return False
 
             self.logger.info("processing new file:%s", test_file_name)
@@ -160,6 +164,7 @@ class HyenaValidator(Validator):
 
             if len(raw_buffer["observations"]) < 1:
                 self.logger.info("skipping file with no observations")
+                self.skip_current_file = True
                 return False
 
             return True
@@ -210,6 +215,11 @@ class HyenaValidator(Validator):
             self.file_success(file_name)
             return True
 
+        if self.skip_current_file:
+            self.skipped += 1
+            self.logger.info("file skipped:%s", file_name)
+            return False
+
         self.file_failure(file_name)
         return False
 
@@ -227,9 +237,10 @@ class HyenaValidator(Validator):
             self.file_processor(target)
 
         self.logger.info(
-            "validator adsb success:%s uat success:%s failure:%s",
+            "validator adsb success:%s uat success:%s skipped:%s failure:%s",
             self.success_adsb,
             self.success_uat,
+            self.skipped,
             self.failure,
         )
 

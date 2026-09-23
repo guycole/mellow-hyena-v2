@@ -101,3 +101,19 @@ def test_execute_processes_all_targets(monkeypatch) -> None:
 
     assert result == 0
     assert seen == ["a.json", "b.json"]
+
+
+def test_file_processor_already_processed_counts_as_skip(monkeypatch) -> None:
+    validator, postgres = _validator()
+    postgres.selected = object()
+
+    monkeypatch.setattr(validator.json_helper, "json_file_reader", lambda _name, _flag: True)
+    validator.json_helper.raw_json = _raw_json(mode="dump1090")
+    monkeypatch.setattr("validator.os.path.isfile", lambda _path: True)
+    monkeypatch.setattr("validator.os.path.getsize", lambda _path: 10)
+
+    result = validator.file_processor("dupe.json")
+
+    assert result is False
+    assert validator.skipped == 1
+    assert validator.failure == 0
