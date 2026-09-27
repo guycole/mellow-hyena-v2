@@ -9,9 +9,10 @@ import logging
 import os
 from abc import ABC, abstractmethod
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from helper.json_helper import JsonHelper
 from helper.postgres import PostGres
-from sqlalchemy.exc import SQLAlchemyError
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("validator")
@@ -135,6 +136,9 @@ class HyenaValidator(Validator):
                 "obs_quantity": len(raw_buffer["observations"]),
                 "obs_time": raw_buffer["timeStamp"]["iso8601"],
                 "site_name": raw_buffer["geoLoc"]["siteName"],
+                "source_file_name": raw_buffer.get(
+                    "sourceFileName", raw_buffer.get("fileName", test_file_name)
+                ),
                 "task": raw_buffer["job"]["task"],
             }
 

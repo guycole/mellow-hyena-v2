@@ -6,8 +6,10 @@
 #
 import json
 import logging
+from typing import Any
 
 from jsonschema import validate
+from jsonschema.exceptions import ValidationError
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("json_helper")
@@ -67,6 +69,7 @@ schema = {
         },
         "crateName":    {"type": "string"},
         "fileName":     {"type": "string"},
+        "sourceFileName": {"type": "string"},
         "version":      {"type": "number"},
         "adsbex": {
             "type": "object",
@@ -112,41 +115,52 @@ schema = {
 
 class JsonHelper:
 
-    def __init__(self):
+    def __init__(self, app_logger: logging.Logger | None = None):
+        self.logger = app_logger or logger
         self.raw_json = None
 
     def json_file_reader(self, file_name: str, validate_flag: bool) -> bool:
         try:
             with open(file_name, "r", encoding="utf-8") as in_file:
                 self.raw_json = json.load(in_file)
-        except Exception as error:
-            logger.error(f"file read failed for {file_name}: {error}")
+        except (OSError, json.JSONDecodeError) as error:
+            self.logger.error("file read failed for %s: %s", file_name, error)
             return False
 
         if validate_flag:
             try:
                 validate(instance=self.raw_json, schema=schema)
-            except Exception as error:
+            except ValidationError as error:
                 # error.json_path pinpoints which array/object entry actually failed
                 path = getattr(error, "json_path", None) or str(getattr(error, "absolute_path", ""))
-                logger.error(f"json validation failed for {file_name}: {error.message} at {path}")
+                self.logger.error(
+                    "json validation failed for %s: %s at %s",
+                    file_name,
+                    error.message,
+                    path,
+                )
                 return False
 
         return True
 
-    def json_file_writer(self, file_name: str, json_data: dict[str, any]) -> bool:
+    def json_file_writer(self, file_name: str, json_data: dict[str, Any]) -> bool:
         try:
             validate(instance=json_data, schema=schema)
-        except Exception as error:
+        except ValidationError as error:
             path = getattr(error, "json_path", None) or str(getattr(error, "absolute_path", ""))
-            logger.error(f"json validation failed for {file_name}: {error.message} at {path}")
+            self.logger.error(
+                "json validation failed for %s: %s at %s",
+                file_name,
+                error.message,
+                path,
+            )
             return False
 
         try:
-            with open(file_name, "w") as out_file:
+            with open(file_name, "w", encoding="utf-8") as out_file:
                 json.dump(json_data, out_file, indent=4)
-        except Exception as error:
-            logger.error(f"file write failure for {file_name}: {error}")
+        except OSError as error:
+            self.logger.error("file write failure for %s: %s", file_name, error)
             return False
 
         return True

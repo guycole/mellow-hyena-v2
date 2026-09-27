@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 
 import yaml
+from yaml.error import YAMLError
 
 CONFIG_FILE_NAME = "config.yaml"
 CRONTAB_ENTRY = (
@@ -58,7 +59,7 @@ class BootBoy:
         try:
             with admin_json_path.open("r", encoding="utf-8") as admin_file:
                 config_data = json.load(admin_file)
-        except Exception as error:
+        except (OSError, json.JSONDecodeError) as error:
             print(f"Error reading {admin_json_path}: {error}")
             sys.exit(1)
 
@@ -102,7 +103,7 @@ class BootBoy:
                     sort_keys=False,
                 )
             print(f"{CONFIG_FILE_NAME} generated successfully.")
-        except Exception as error:
+        except (OSError, YAMLError) as error:
             print(f"Error writing {CONFIG_FILE_NAME}: {error}")
             sys.exit(1)
 
@@ -181,7 +182,7 @@ class BootBoy:
             else:
                 stderr = proc.stderr.strip() or "no stderr"
                 print(f"Failed to update wombat crontab: {stderr}")
-        except Exception as error:
+        except (OSError, subprocess.SubprocessError) as error:
             print(f"Error updating wombat crontab: {error}")
 
     def execute(self, target: str) -> None:
