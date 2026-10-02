@@ -231,10 +231,9 @@ class HyenaValidator(Validator):
             self.file_processor(target)
 
         self.logger.info(
-            "validator adsb success:%s uat success:%s skipped:%s failure:%s",
+            "validator adsb success:%s uat success:%s failure:%s",
             self.success_adsb,
             self.success_uat,
-            self.skipped,
             self.failure,
         )
 
