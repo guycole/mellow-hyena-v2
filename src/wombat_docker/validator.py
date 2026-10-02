@@ -56,14 +56,10 @@ class HyenaValidator(Validator):
         )
 
         self.failure = 0
-        self.skipped = 0
         self.success_adsb = 0
         self.success_uat = 0
 
         self.adsb_flag = True
-        self.skip_current_file = False
-        self.remove_current_file = False
-
         self.json_helper = JsonHelper()
 
     def file_failure(self, file_name: str) -> None:
@@ -77,6 +73,7 @@ class HyenaValidator(Validator):
             self.logger.error(
                 "file move failure for %s -> %s: %s", file_name, failure_target, error
             )
+
 
     def _success_target(self, file_name: str) -> str:
         if self.adsb_flag:
@@ -108,8 +105,6 @@ class HyenaValidator(Validator):
         try:
             candidate = self.postgres.load_log_select_by_file_name(test_file_name)
             if candidate is not None:
-                self.logger.info("skipping already processed:%s", test_file_name)
-                self.skip_current_file = True
                 return False
 
             self.logger.info("processing new file:%s", test_file_name)
@@ -169,9 +164,6 @@ class HyenaValidator(Validator):
             self.postgres.daily_score_insert_or_update(daily_score)
 
             if len(raw_buffer["observations"]) < 1:
-                self.logger.info("skipping file with no observations")
-                self.skip_current_file = True
-                self.remove_current_file = True
                 return False
 
             return True
@@ -221,18 +213,6 @@ class HyenaValidator(Validator):
         if self.load_log_test(file_name):
             self.file_success(file_name)
             return True
-
-        if self.skip_current_file:
-            self.skipped += 1
-            self.logger.info("file skipped:%s", file_name)
-
-            if self.remove_current_file:
-                try:
-                    os.remove(file_name)
-                except OSError as error:
-                    self.logger.error("file remove failure for %s: %s", file_name, error)
-
-            return False
 
         self.file_failure(file_name)
         return False
