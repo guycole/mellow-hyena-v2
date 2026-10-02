@@ -83,6 +83,7 @@ def test_execute_writes_expected_payload_file(tmp_path, monkeypatch) -> None:
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["crateName"] == "demo-crate"
     assert payload["fileName"] == f"{fixed_uuid}.json"
+    assert payload["sourceFileName"] == "aircraft.json"
     assert payload["job"]["mode"] == "dump978"
     assert payload["job"]["project"] == "hyena-v2"
     assert payload["timeStamp"]["epochSeconds"] == 0

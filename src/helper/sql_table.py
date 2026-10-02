@@ -4,19 +4,25 @@
 # Development Environment: Ubuntu 22.04.5 LTS/python 3.10.12
 # Author: G.S. Cole (guycole at gmail dot com)
 #
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Any
 
-from sqlalchemy import Column
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, Integer, String
-
-from sqlalchemy.orm import registry
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.ext.declarative import declared_attr
 
-mapper_registry = registry()
 
 class Base(DeclarativeBase):
     pass
+
 
 class AdsbExchange(Base):
     __tablename__ = "hyena_adsb_exchange"
@@ -33,7 +39,7 @@ class AdsbExchange(Base):
     pia_flag = Column(Boolean)
     wierdo_flag = Column(Boolean)
 
-    def __init__(self, args: dict[str, any]):
+    def __init__(self, args: dict[str, Any]):
         self.adsb_hex = args["adsb_hex"]
         self.category = args["category"]
         self.emergency = args["emergency"]
@@ -56,7 +62,7 @@ class DailyScore(Base):
     quantity_uat = Column(Integer)
     score_date = Column(Date)
 
-    def __init__(self, args: dict[str, any]):
+    def __init__(self, args: dict[str, Any]):
         self.crate_name = args["crate_name"]
         self.file_quantity = args["file_quantity"]
         self.host_name = args["host_name"]
@@ -80,7 +86,7 @@ class GeoLoc(Base):
     site_name = Column(String)
     speed = Column(Float)
    
-    def __init__(self, args: dict[str, any]):
+    def __init__(self, args: dict[str, Any]):
         self.altitude = args["altitude"]
         self.course = args["course"]
         self.fix_time = args["fix_time"]
@@ -110,24 +116,27 @@ class LoadLog(Base):
     obs_quantity = Column(Integer)
     obs_time = Column(DateTime)
     site_name = Column(String)
+    source_file_name = Column(String)
     task = Column(String)
 
-    def __init__(self, args: dict[str, any]):
+    def __init__(self, args: dict[str, Any]):
         self.adsbex_quantity = args["adsbex_quantity"]
         self.crate_name = args["crate_name"]
         self.epoch_seconds = args["epoch_seconds"]
         self.file_name = args["file_name"]
         self.geo_loc_id = args["geo_loc_id"]
         self.host_name = args["host_name"]
-        self.load_time = args.get("load_time", datetime.now())
+        self.load_time = args.get("load_time", datetime.now(timezone.utc))
         self.mode = args["mode"]
         self.obs_quantity = args["obs_quantity"]
         self.obs_time = args["obs_time"]
         self.site_name = args["site_name"]
+        self.source_file_name = args["source_file_name"]
         self.task = args["task"]
 
     def __repr__(self):
         return f"load_log({self.file_name} {self.obs_time} {self.task} {self.host_name})"
+
 
 class Observation(Base):
     __tablename__ = "hyena_observation"
@@ -146,7 +155,7 @@ class Observation(Base):
     speed = Column(Integer)
     track = Column(Integer)
 
-    def __init__(self, args: dict[str, any]):
+    def __init__(self, args: dict[str, Any]):
         self.adsb_exchange_id = args["adsb_exchange_id"]
         self.adsb_hex = args["adsb_hex"]
         self.altitude = args["altitude"]

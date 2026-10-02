@@ -17,6 +17,7 @@ import uuid
 import zoneinfo
 from abc import ABC, abstractmethod
 from typing import Any
+from urllib.parse import urlparse
 
 import pydantic
 import requests
@@ -108,6 +109,7 @@ class HyenaModel(pydantic.BaseModel):
 
     crate_name: str = pydantic.Field(alias="crateName")
     file_name: str = pydantic.Field(alias="fileName")
+    source_file_name: str = pydantic.Field(alias="sourceFileName")
     version: int = 1
     equipment: Equipment
     geo_loc: GeoLoc = pydantic.Field(alias="geoLoc")
@@ -159,6 +161,17 @@ class HyenaCollector(Collector):
             return fallback
         return str(value).strip() or fallback
 
+    def _normalize_observation(self, element: dict[str, Any]) -> dict[str, str]:
+        return {
+            "hex": self._to_text(element.get("hex"), "unknown"),
+            "flight": self._to_text(element.get("flight"), "unknown"),
+            "latitude": self._to_text(element.get("lat"), "0.0"),
+            "longitude": self._to_text(element.get("lon"), "0.0"),
+            "altitude": self._to_text(element.get("altitude"), "0"),
+            "track": self._to_text(element.get("track"), "0"),
+            "speed": self._to_text(element.get("speed"), "0"),
+        }
+
     def _dump978(self) -> list[dict[str, Any]]:
         if not self.dump978_filename:
             logger.warning("dump978 filename is not configured")
@@ -193,21 +206,7 @@ class HyenaCollector(Collector):
             logger.info("empty dump978 aircraft list: %s", self.dump978_filename)
             return []
 
-        results = []
-        for element in raw:
-            temp = {
-                "hex": self._to_text(element.get("hex"), "unknown"),
-                "flight": self._to_text(element.get("flight"), "unknown"),
-                "latitude": self._to_text(element.get("lat"), "0.0"),
-                "longitude": self._to_text(element.get("lon"), "0.0"),
-                "altitude": self._to_text(element.get("altitude"), "0"),
-                "track": self._to_text(element.get("track"), "0"),
-                "speed": self._to_text(element.get("speed"), "0"),
-            }
-
-            results.append(temp)
-
-        return results
+        return [self._normalize_observation(element) for element in raw]
 
     def _dump1090(self) -> list[dict[str, Any]]:
         raw = []
@@ -228,24 +227,10 @@ class HyenaCollector(Collector):
                 logger.warning("dump1090 bad response: %s", response.status_code)
         except requests.RequestException:
             logger.exception("dump1090 request failure: %s", self.dump1090_url)
-        except Exception as error:
-            logger.error("dump1090 error: %s", error)
+        except ValueError:
+            logger.exception("dump1090 payload decode error: %s", self.dump1090_url)
 
-        results = []
-        for element in raw:
-            temp = {
-                "hex": self._to_text(element.get("hex"), "unknown"),
-                "flight": self._to_text(element.get("flight"), "unknown"),
-                "latitude": self._to_text(element.get("lat"), "0.0"),
-                "longitude": self._to_text(element.get("lon"), "0.0"),
-                "altitude": self._to_text(element.get("altitude"), "0"),
-                "track": self._to_text(element.get("track"), "0"),
-                "speed": self._to_text(element.get("speed"), "0"),
-            }
-
-            results.append(temp)
-
-        return results
+        return [self._normalize_observation(element) for element in raw]
 
     def get_observations(self) -> list[Observation]:
         receiver_task = self.receiver.task.lower()
@@ -259,6 +244,20 @@ class HyenaCollector(Collector):
             return []
 
         return [Observation(**raw_observation) for raw_observation in raw_observations]
+
+    def _source_file_name(self) -> str:
+        receiver_task = self.receiver.task.lower()
+
+        if "dump978" in receiver_task and self.dump978_filename:
+            return os.path.basename(self.dump978_filename)
+
+        if "dump1090" in receiver_task and self.dump1090_url:
+            parsed_url = urlparse(self.dump1090_url)
+            url_file_name = os.path.basename(parsed_url.path)
+            if url_file_name:
+                return url_file_name
+
+        return "unknown"
 
     def execute(self, adsbex_key: str | None = None) -> int:
         logger.info("collector execute: %s", self.receiver.task)
@@ -289,6 +288,7 @@ class HyenaCollector(Collector):
         hyena_model = HyenaModel(
             crate_name=self.crate_name,
             file_name=output_file_name,
+            source_file_name=self._source_file_name(),
             equipment=self.equipment,
             geo_loc=self.geo_loc,
             job=self.job,
@@ -310,26 +310,28 @@ class HyenaCollector(Collector):
 # argv[1] = configuration filename
 #
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        file_name = sys.argv[1]
-    else:
-        file_name = "config.yaml"
+    file_name = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
 
-    adsbex_key = None
+    adsbex_key: str | None
     try:
         with open("adsbex.key", "r", encoding="utf-8") as key_file:
             adsbex_key = key_file.read().strip() or None
     except OSError:
         adsbex_key = None
+        logger.warning("adsbex.key file not found, skipping ADS-B Exchange lookup")
 
-    with open(file_name, "r", encoding="utf-8") as in_file:
-        try:
+    try:
+        with open(file_name, "r", encoding="utf-8") as in_file:
             configuration = yaml.load(in_file, Loader=SafeLoader)
-            collector = HyenaCollector(configuration)
-            raise SystemExit(collector.execute(adsbex_key))
-        except yaml.YAMLError as error:
-            logger.exception("configuration parse error: %s", error)
-            raise SystemExit(1)
+    except OSError as error:
+        logger.error("configuration read error: %s", error)
+        raise SystemExit(1)
+    except yaml.YAMLError:
+        logger.exception("configuration parse error")
+        raise SystemExit(1)
+
+    collector = HyenaCollector(configuration)
+    raise SystemExit(collector.execute(adsbex_key))
 
 # ;;; Local Variables: ***
 # ;;; mode:python ***

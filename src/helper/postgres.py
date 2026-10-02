@@ -4,21 +4,13 @@
 # Development Environment: Ubuntu 22.04.5 LTS/python 3.10.12
 # Author: G.S. Cole (guycole at gmail dot com)
 #
-# import sqlalchemy
-# from sqlalchemy import and_
-# from sqlalchemy import select
-
 import datetime
 import logging
-import time
-
-from typing import List, Dict
+from typing import Any
 
 import sqlalchemy
-from sqlalchemy import and_
-from sqlalchemy import func
-from sqlalchemy import select
-from sqlalchemy import desc
+from sqlalchemy import and_, desc, func, select
+from sqlalchemy.exc import SQLAlchemyError
 
 from helper.sql_table import (
     AdsbExchange,
@@ -31,26 +23,32 @@ from helper.sql_table import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("hyena")
 
+
 class PostGres:
     db_engine = None
     Session = None
 
-    def __init__(self, session: sqlalchemy.orm.session.sessionmaker):
+    def __init__(
+        self,
+        session: sqlalchemy.orm.session.sessionmaker,
+        app_logger: logging.Logger | None = None,
+    ):
+        self.logger = app_logger or logger
         self.Session = session
 
-    def adsb_exchange_insert(self, args: dict[str, any]) -> AdsbExchange:
+    def adsb_exchange_insert(self, args: dict[str, Any]) -> AdsbExchange:
         candidate = AdsbExchange(args)
 
         try:
             with self.Session() as session:
                 session.add(candidate)
                 session.commit()
-        except Exception as error:
-            print(error)
+        except SQLAlchemyError:
+            self.logger.exception("adsb_exchange_insert failed")
 
         return candidate
 
-    def adsb_exchange_select_or_insert(self, args: dict[str, any]) -> AdsbExchange:
+    def adsb_exchange_select_or_insert(self, args: dict[str, Any]) -> AdsbExchange:
         statement = select(AdsbExchange).filter_by(
             adsb_hex=args["adsb_hex"],
             category=args["category"],
@@ -69,10 +67,10 @@ class PostGres:
 
         if candidate is None:
             return self.adsb_exchange_insert(args)
-        else:
-            return candidate
 
-    def daily_score_insert_or_update(self, args: dict[str, any]) -> DailyScore:
+        return candidate
+
+    def daily_score_insert_or_update(self, args: dict[str, Any]) -> DailyScore:
         candidate = DailyScore(args)
 
         try:
@@ -94,26 +92,30 @@ class PostGres:
                     existing.quantity_uat += candidate.quantity_uat
 
                 session.commit()
-        except Exception as error:
-            logger.exception("daily_score_insert_or_update failed: %s", error)
+        except SQLAlchemyError:
+            self.logger.exception("daily_score_insert_or_update failed")
 
         return candidate
 
-    def geo_loc_select_by_site(self, site_name: str) -> List[GeoLoc]:
-        statement = select(GeoLoc).filter_by(site_name=site_name).order_by(GeoLoc.fix_time)
+    def geo_loc_select_by_site(self, site_name: str) -> list[GeoLoc]:
+        statement = (
+            select(GeoLoc)
+            .filter_by(site_name=site_name)
+            .order_by(desc(GeoLoc.fix_time), desc(GeoLoc.id))
+        )
 
         with self.Session() as session:
             return session.scalars(statement).all()
 
-    def load_log_insert(self, args: dict[str, any]) -> LoadLog:
+    def load_log_insert(self, args: dict[str, Any]) -> LoadLog:
         candidate = LoadLog(args)
 
         try:
             with self.Session() as session:
                 session.add(candidate)
                 session.commit()
-        except Exception as error:
-            logger.exception("load_log_insert failed: %s", error)
+        except SQLAlchemyError:
+            self.logger.exception("load_log_insert failed")
 
         return candidate
 
@@ -137,15 +139,15 @@ class PostGres:
                 select(LoadLog).filter_by(file_name=file_name)
             ).first()
 
-    def observation_insert(self, args: dict[str, any]) -> Observation:
+    def observation_insert(self, args: dict[str, Any]) -> Observation:
         candidate = Observation(args)
 
         try:
             with self.Session() as session:
                 session.add(candidate)
                 session.commit()
-        except Exception as error:
-            logger.exception("observation_insert failed: %s", error)
+        except SQLAlchemyError:
+            self.logger.exception("observation_insert failed")
 
         return candidate
 
