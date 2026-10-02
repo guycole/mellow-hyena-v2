@@ -62,6 +62,7 @@ class HyenaValidator(Validator):
 
         self.adsb_flag = True
         self.skip_current_file = False
+        self.remove_current_file = False
 
         self.json_helper = JsonHelper()
 
@@ -102,6 +103,7 @@ class HyenaValidator(Validator):
     def load_log_test(self, test_file_name: str) -> bool:
         self.logger.info("load_log_test for file: %s", test_file_name)
         self.skip_current_file = False
+        self.remove_current_file = False
 
         try:
             candidate = self.postgres.load_log_select_by_file_name(test_file_name)
@@ -169,6 +171,7 @@ class HyenaValidator(Validator):
             if len(raw_buffer["observations"]) < 1:
                 self.logger.info("skipping file with no observations")
                 self.skip_current_file = True
+                self.remove_current_file = True
                 return False
 
             return True
@@ -222,6 +225,13 @@ class HyenaValidator(Validator):
         if self.skip_current_file:
             self.skipped += 1
             self.logger.info("file skipped:%s", file_name)
+
+            if self.remove_current_file:
+                try:
+                    os.remove(file_name)
+                except OSError as error:
+                    self.logger.error("file remove failure for %s: %s", file_name, error)
+
             return False
 
         self.file_failure(file_name)
