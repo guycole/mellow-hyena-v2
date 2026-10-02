@@ -29,7 +29,7 @@ class Validator(ABC):
         pass
 
     @abstractmethod
-    def file_failure(self, file_name: str) -> None:
+    def file_failure(self, file_name: str, remove: bool) -> None:
         pass
 
     @abstractmethod
@@ -62,17 +62,26 @@ class HyenaValidator(Validator):
         self.adsb_flag = True
         self.json_helper = JsonHelper()
 
-    def file_failure(self, file_name: str) -> None:
+    def file_failure(self, file_name: str, remove: bool) -> None:
         self.logger.info("file failure:%s", file_name)
 
         self.failure += 1
-        failure_target = os.path.join(self.failure_dir, file_name)
-        try:
-            os.rename(file_name, failure_target)
-        except OSError as error:
-            self.logger.error(
-                "file move failure for %s -> %s: %s", file_name, failure_target, error
-            )
+
+        if remove:
+            try:
+                os.remove(file_name)
+            except OSError as error:
+                self.logger.error(
+                    "file remove failure for %s: %s", file_name, error
+                )
+        else:
+            failure_target = os.path.join(self.failure_dir, file_name)
+            try:
+                os.rename(file_name, failure_target)
+            except OSError as error:
+                self.logger.error(
+                    "file move failure for %s -> %s: %s", file_name, failure_target, error
+                )
 
 
     def _success_target(self, file_name: str) -> str:
@@ -105,6 +114,7 @@ class HyenaValidator(Validator):
         try:
             candidate = self.postgres.load_log_select_by_file_name(test_file_name)
             if candidate is not None:
+                self.file_failure(test_file_name, False)
                 return False
 
             self.logger.info("processing new file:%s", test_file_name)
@@ -112,6 +122,7 @@ class HyenaValidator(Validator):
             raw_buffer = self.json_helper.raw_json
             if not isinstance(raw_buffer, dict):
                 self.logger.warning("raw buffer missing for file: %s", test_file_name)
+                self.file_failure(test_file_name, False)
                 return False
 
             geo_loc = self.postgres.geo_loc_select_by_site(raw_buffer["geoLoc"]["siteName"])
@@ -119,6 +130,7 @@ class HyenaValidator(Validator):
                 self.logger.warning(
                     "must insert geo_loc for site: %s", raw_buffer["geoLoc"]["siteName"]
                 )
+                self.file_failure(test_file_name, False)
                 return False
 
             load_log = {
@@ -164,6 +176,7 @@ class HyenaValidator(Validator):
             self.postgres.daily_score_insert_or_update(daily_score)
 
             if len(raw_buffer["observations"]) < 1:
+                self.file_failure(test_file_name, True)
                 return False
 
             return True
@@ -172,6 +185,7 @@ class HyenaValidator(Validator):
         except SQLAlchemyError as error:
             self.logger.error("postgres insert failed for %s: %s", test_file_name, error)
 
+        self.file_failure(test_file_name, False)
         return False
 
     def file_processor(self, file_name: str) -> bool:
@@ -179,42 +193,41 @@ class HyenaValidator(Validator):
 
         if not os.path.isfile(file_name):
             self.logger.warning("skipping non-file:%s", file_name)
-            self.file_failure(file_name)
+            self.file_failure(file_name, False)
             return False
 
         if os.path.getsize(file_name) < 1:
             self.logger.warning("skipping empty file:%s", file_name)
-            self.file_failure(file_name)
+            self.file_failure(file_name, False)
             return False
 
         if not file_name.endswith(".json"):
             self.logger.warning("skipping non-json:%s", file_name)
-            self.file_failure(file_name)
+            self.file_failure(file_name, False)
             return False
 
         if not self.json_helper.json_file_reader(file_name, True):
             self.logger.warning("file read failed for %s", file_name)
-            self.file_failure(file_name)
+            self.file_failure(file_name, False)
             return False
 
         raw_buffer = self.json_helper.raw_json
         if not isinstance(raw_buffer, dict):
             self.logger.warning("invalid raw payload for %s", file_name)
-            self.file_failure(file_name)
+            self.file_failure(file_name, False)
             return False
 
         version = raw_buffer.get("version")
         project = raw_buffer.get("job", {}).get("project")
         if version != 1 or project != "hyena-v2":
             self.logger.warning("invalid version or project for %s", file_name)
-            self.file_failure(file_name)
+            self.file_failure(file_name, False)
             return False
 
         if self.load_log_test(file_name):
             self.file_success(file_name)
             return True
 
-        self.file_failure(file_name)
         return False
 
     def execute(self) -> int:
