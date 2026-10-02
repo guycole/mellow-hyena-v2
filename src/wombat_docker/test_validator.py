@@ -117,3 +117,25 @@ def test_file_processor_already_processed_counts_as_skip(monkeypatch) -> None:
     assert result is False
     assert validator.skipped == 1
     assert validator.failure == 0
+
+
+def test_file_processor_removes_file_when_no_observations(monkeypatch) -> None:
+    validator, _postgres = _validator()
+
+    raw = _raw_json(mode="dump1090")
+    raw["observations"] = []
+    validator.json_helper.raw_json = raw
+
+    monkeypatch.setattr(validator.json_helper, "json_file_reader", lambda _name, _flag: True)
+    monkeypatch.setattr("validator.os.path.isfile", lambda _path: True)
+    monkeypatch.setattr("validator.os.path.getsize", lambda _path: 10)
+
+    removed = []
+    monkeypatch.setattr("validator.os.remove", lambda path: removed.append(path))
+
+    result = validator.file_processor("no-obs.json")
+
+    assert result is False
+    assert validator.skipped == 1
+    assert validator.failure == 0
+    assert removed == ["no-obs.json"]
